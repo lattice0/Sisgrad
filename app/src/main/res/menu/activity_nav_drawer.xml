@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_camera"
+            android:icon="@drawable/ic_school"
+            android:title="Graduação" />
+        <item
+            android:id="@+id/nav_gallery"
+            android:icon="@drawable/ic_school"
+            android:title="Pós-Graduação" />
+        <item
+            android:id="@+id/nav_person"
+            android:icon="@drawable/ic_person"
+            android:title="Dados Pessoais" />
+        <item
+            android:id="@+id/nav_manage"
+            android:icon="@drawable/ic_settings"
+            android:title="Configurações" />
+        <item
+            android:id="@+id/nav_logout"
+            android:icon="@drawable/ic_not_interested"
+            android:title="Sair" />
+    </group>
+
+    <item android:title="Informações">
+        <menu>
+            <item
+                android:id="@+id/nav_share"
+                android:icon="@drawable/ic_live_help"
+                android:title="FAQ" />
+            <item
+                android:id="@+id/nav_send"
+                android:icon="@drawable/ic_smartphone"
+                android:title="Sobre" />
+
+        </menu>
+    </item>
+
+</menu>
