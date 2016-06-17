@@ -8,7 +8,7 @@ just do:
 ```
 git clone https://github.com/lucaszanella/Sisgrad
 cd Sisgrad
-gradle build
+./gradle build
 ```
 
 #Privacy
