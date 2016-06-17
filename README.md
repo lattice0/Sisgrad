@@ -3,8 +3,7 @@ Sisgrad is the Unesp's main system for sending messages, sharing informations ab
 'Sisgrad' is an android app that connects to Unesp's Sisgrad, Parthenon and Lattes, which are the most used systems in the university. 
 
 #Build
-
-just do:
+Be sure to have android-sdk installed, then you have to create the file local.properties at /Sisgrad containing the path to the sdk. For example, mine is sdk.dir=/home/lucaszanella/Android/Sdk.
 ```
 git clone https://github.com/lucaszanella/Sisgrad
 cd Sisgrad
