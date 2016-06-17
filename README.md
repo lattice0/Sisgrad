@@ -5,7 +5,10 @@ Sisgrad is the Unesp's main system for sending messages, sharing informations ab
 #Build
 
 just do:
-
+```
+git clone https://github.com/lucaszanella/Sisgrad
+cd Sisgrad
 gradle build
+```
 
 :)
