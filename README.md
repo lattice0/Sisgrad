@@ -3,12 +3,21 @@ Sisgrad is the Unesp's main system for sending messages, sharing informations ab
 'Sisgrad' is an android app that connects to Unesp's Sisgrad, Parthenon and Lattes, which are the most used systems in the university. 
 
 #Build
-Be sure to have android-sdk installed, then you have to create the file local.properties at /Sisgrad containing the path to the sdk. For example, mine is sdk.dir=/home/lucaszanella/Android/Sdk.
+Be sure to have android-sdk installed, then you have to create the file local.properties at /Sisgrad containing the path to the sdk. For example, my sdk is at /home/lucaszanella/Android/Sdk so I did:
 ```
-git clone https://github.com/lucaszanella/Sisgrad
+it clone https://github.com/lucaszanella/Sisgrad
 cd Sisgrad
+nano local.properties
+```
+and wrote: 
+```
+sdk.dir=/home/lucaszanella/Android/Sdk
+```
+Now, to build the project, just run
+```
 ./gradlew build
 ```
+at /Sisgrad, it'll compile using the included gradlew (gradle wrapper). If you want to build with your own gradle, just run gradle build, but note that it's better to build with the wrapper.
 
 #Privacy
 As you can see in the source code, user's information never leaves the app, unless they're going to the official servers. HTTPs is used throughout the entire Sisgrad module. However, this was not possible with Lattes, which only support HTTP unencrypted connection. The good part is that Lattes doesn't require any authentication, it's simply for searching about people's academic life. Parthenon supports HTTPs only in the authentication form. Not bad, but cookies can be seen in plain text. Since people already connect to the system in this way everytime, I'm supporting Parthenon in this app, because the information that can be leaked is unharmful (or not...).
