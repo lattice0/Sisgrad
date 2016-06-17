@@ -5,7 +5,7 @@ Sisgrad is the Unesp's main system for sending messages, sharing informations ab
 #Build
 Be sure to have android-sdk installed, then you have to create the file local.properties at /Sisgrad containing the path to the sdk. For example, my sdk is at /home/lucaszanella/Android/Sdk so I did:
 ```
-it clone https://github.com/lucaszanella/Sisgrad
+git clone https://github.com/lucaszanella/Sisgrad
 cd Sisgrad
 nano local.properties
 ```
