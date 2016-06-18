@@ -1,7 +1,7 @@
 # Sisgrad
 Sisgrad is the Unesp's main system for sending messages, sharing informations about students and to inform people about the university activities.
 'Sisgrad' is an android app that connects to Unesp's Sisgrad, Parthenon and Lattes, which are the most used systems in the university. 
-
+This project automatically downloads the dependency https://github.com/lucaszanella/UnespSisgradCrawler which is the webcrawling part, through https://jitpack.io using gradle :)
 #Build
 Be sure to have android-sdk installed, then you have to create the file local.properties at /Sisgrad containing the path to the sdk. For example, my sdk is at /home/lucaszanella/Android/Sdk so I did:
 ```
