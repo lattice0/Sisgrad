@@ -1,5 +1,7 @@
 apply plugin: 'com.android.application'
-
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
 android {
     compileSdkVersion 23
     buildToolsVersion "23.0.3"
@@ -17,9 +19,6 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-    sourceSets {
-        main.java.srcDirs += 'src/main/java/UnespSisgradCrawler'
-    }
 }
 
 dependencies {
@@ -30,5 +29,6 @@ dependencies {
     compile 'com.android.support:design:23.4.0'
     compile 'com.pkmmte.view:circularimageview:1.1'
     compile 'org.json:json:20160212'
-    compile 'com.github.lucaszanella:UnespSisgradCrawler:master-SNAPSHOT'
+    compile 'com.github.lucaszanella:UnespSisgradCrawler:-SNAPSHOT'
 }
+

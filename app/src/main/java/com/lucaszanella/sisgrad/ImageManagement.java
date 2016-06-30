@@ -44,6 +44,20 @@ public class ImageManagement extends AppCompatActivity{
             return null;
         }
     }
+    public static void DumpCursor (Context context) {
+        Log.d(LOG_TAG, "dump cursor called");
+        String[] projection = {
+                DataProviderContract.STORAGE.NAME,
+                DataProviderContract.STORAGE.TRIED,
+                DataProviderContract.STORAGE.PATH,
+                DataProviderContract.STORAGE.DIDLOAD
+        };
+
+        Cursor cursorOfFiles = context.getContentResolver().query(DataProviderContract.STORAGE_URI, projection, null, null, null);
+        Log.d(LOG_TAG, DatabaseUtils.dumpCursorToString(cursorOfFiles));
+        cursorOfFiles.close();
+    }
+
     //Simple function to load an image from the storage, given a filename and a path
     public static Bitmap loadImageFromStorage(String name, Context context)
     {
@@ -55,34 +69,50 @@ public class ImageManagement extends AppCompatActivity{
                 DataProviderContract.STORAGE.DIDLOAD
         };
         String selection = DataProviderContract.STORAGE.NAME+"=?";
-        String fileName = Sha256Hex.hash(name.toLowerCase());
-        String[] arguments = {fileName};//IMPORTANT: NEVER FORGET TO PUT IT TO LOWER CASE
+        String fileName = Sha256Hex.hash(name.toLowerCase());//IMPORTANT: NEVER FORGET TO PUT IT TO LOWER CASE
+        String[] arguments = {fileName};
         Cursor cursorOfFiles = context.getContentResolver().query(DataProviderContract.STORAGE_URI, projection, selection, arguments, null);
         if (true) {
             Cursor a = context.getContentResolver().query(DataProviderContract.STORAGE_URI, null, null, null, null);
-            Log.d(LOG_TAG, "CURSOR IS _--------- : "+DatabaseUtils.dumpCursorToString(a));
+            //Log.d(LOG_TAG, "CURSOR IS _--------- : "+DatabaseUtils.dumpCursorToString(a));
         }
         if(cursorOfFiles!=null && cursorOfFiles.getCount()>0) {
-            Log.d(LOG_TAG, "cursor not null for name : "+name);
+            //Log.d(LOG_TAG, "cursor not null for name : "+name);
             cursorOfFiles.moveToFirst();
             String path = cursorOfFiles.getString(cursorOfFiles.getColumnIndex(DataProviderContract.STORAGE.PATH));
-            Log.d(LOG_TAG, "path is: "+path);
-
+            //Log.d(LOG_TAG, "path is: "+path);
+            ContextWrapper cw = new ContextWrapper(context.getApplicationContext());
+            File directory = cw.getDir("imageDir", Context.MODE_PRIVATE);//get the path to the image
+            File filePath = new File(path, fileName);//create directory and file
             try {
-                File f = new File(path, fileName);
-                Bitmap b = BitmapFactory.decodeStream(new FileInputStream(f));
+                //File f = new File(context.getFilesDir(), fileName);
+                Bitmap b = BitmapFactory.decodeStream(new FileInputStream(filePath));
                 return b;
             /*
             ImageView img=(ImageView)findViewById(R.id.authorImage);
             img.setImageBitmap(b);
             */
             } catch (FileNotFoundException e) {
-                e.printStackTrace();
+                Log.d(LOG_TAG, "file not found for " + name+ " path "+path+ " filename "+fileName);
+                Log.d(LOG_TAG, "directory context is :"+filePath.toString());
+                //e.printStackTrace();
+                cursorOfFiles.close();
+
+                File f = directory;
+                File file[] = f.listFiles();
+                Log.d("Files", "Size: "+ file.length);
+                for (int i=0; i < file.length; i++)
+                {
+                    Log.d("Files", "FileName:" + file[i].getName());
+                }
+
+
                 return null;
             }
         } else {
             Log.d(LOG_TAG, "null or empty cursor");
         }
+        cursorOfFiles.close();
         return null;
     }
     //just a simple tuple to return the file name and path when saving it
@@ -96,12 +126,12 @@ public class ImageManagement extends AppCompatActivity{
     }
     public static Tuple saveImage(Bitmap image, String realFileName, Context context) {
         Log.d(LOG_TAG, "saveImage caled for "+realFileName);
-        String fileName = Sha256Hex.hash(realFileName);//fileName is gonna be hex(sha256(realFileName))
-        ContextWrapper cw = new ContextWrapper(context);
+        String fileName = Sha256Hex.hash(realFileName.toLowerCase());//fileName is gonna be hex(sha256(realFileName))
+        ContextWrapper cw = new ContextWrapper(context.getApplicationContext());
         File directory = cw.getDir("imageDir", Context.MODE_PRIVATE);//get the path to the image
         File filePath = new File(directory, fileName);//create directory and file
         FileOutputStream fos = null;
-        if (filePath.exists() && !filePath.isDirectory()) {
+        if (true) {
             try {
                 //open the FileOutputStream for the file path
                 fos = new FileOutputStream(filePath);
@@ -119,7 +149,7 @@ public class ImageManagement extends AppCompatActivity{
                 Log.d(LOG_TAG, "saved image to storage (I guess)");
             }
         } else {
-            Log.d(LOG_TAG, "IMPORTANT: DETECTED THAT FILE ALREADY EXISTS FOR "+realFileName);
+            //Log.d(LOG_TAG, "IMPORTANT: DETECTED THAT FILE ALREADY EXISTS FOR "+realFileName+" OR IS DIRECTORY + !filePath.isDirectory()"+filePath.isDirectory());
         }
         return new Tuple(fileName, directory.getAbsolutePath());
     }

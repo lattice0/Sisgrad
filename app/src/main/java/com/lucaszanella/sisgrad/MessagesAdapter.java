@@ -2,16 +2,17 @@ package com.lucaszanella.sisgrad;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.graphics.Bitmap;
 import android.text.Html;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CursorAdapter;
-import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
+
+import java.util.Map;
 
 /**
  * Created by lucaszanella on 5/2/16.
@@ -21,6 +22,8 @@ public class MessagesAdapter extends CursorAdapter {
     public MessagesAdapter(Context context, Cursor cursor, int flags) {
         super(context, cursor, 0);
     }
+
+    public Map<String, Bitmap> authorImages;
 
     // The newView method is used to inflate a new view and return it,
     // you don't bind any data to the view at this point.
@@ -38,8 +41,10 @@ public class MessagesAdapter extends CursorAdapter {
         TextView author = (TextView) view.findViewById(R.id.author);
         TextView message = (TextView) view.findViewById(R.id.message);
         TextView time = (TextView) view.findViewById(R.id.time);
+        ImageView image = (ImageView) view.findViewById(R.id.person);
         View progress = (ProgressBar) view.findViewById(R.id.progress);
         //progress.setVisibility(View.VISIBLE);
+
         // Extract properties from cursor
         String titleString = cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.TITLE));
         String authorString = cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.AUTHOR));
@@ -55,6 +60,14 @@ public class MessagesAdapter extends CursorAdapter {
             attachmentPoint.addView(attachments, 0, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT, ViewGroup.LayoutParams.FILL_PARENT));
         }
         */
+
+        //Log.d("mAdapter","log tag for "+cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.AUTHOR)).toLowerCase());
+        Bitmap photo = authorImages.get(cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.AUTHOR)).toLowerCase());
+        if (photo!=null) {
+            image.setImageBitmap(photo);
+        }
+
+
         java.util.Date timeDate =new java.util.Date(Long.parseLong(timeString)*1000);
         String messageString = "";
         String a = cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.MESSAGE));
@@ -84,5 +97,6 @@ public class MessagesAdapter extends CursorAdapter {
             }
         }
         time.setText("08:20");
+        //cursor.close();
     }
 }

@@ -6,11 +6,9 @@
 
         />
 
-    <item>
-        <bitmap
+    <item
             android:gravity="center"
-            android:src="@mipmap/unesp_white"/>
-    </item>
+            android:drawable="@drawable/unesp"/>
 
 
 </layer-list>

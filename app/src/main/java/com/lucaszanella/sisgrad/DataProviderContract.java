@@ -13,7 +13,7 @@ public class DataProviderContract implements BaseColumns{
     private DataProviderContract() { }
 
 
-    public static final int DATABASE_VERSION = 26;//Changing database version makes it
+    public static final int DATABASE_VERSION = 31;//Changing database version makes it
     // Database table
     public static final String DATABASE_NAME = "sisgrad.db";
 

@@ -136,7 +136,8 @@ public class ReadMessageFragment extends Fragment implements
         //Sets the loaded data to the ui elements
         title.setText(messageTitle);
         author.setText(messageAuthor);
-        Bitmap image = ImageManagement.loadImageFromStorage(messageAuthor, getContext());
+
+        Bitmap image = ImageManagement.loadImageFromStorage(messageAuthor.toLowerCase(), getContext());
         if (image!=null) {
             authorImageView.setImageBitmap(image);
         }
