@@ -64,11 +64,12 @@ public class DataProvider extends ContentProvider {
             + "("
             + DataProviderContract.STORAGE.ID + " integer primary key autoincrement, "
             + DataProviderContract.STORAGE.TYPE + " integer not null,"//0 is for Bitmap
-            + DataProviderContract.STORAGE.PATH + " text not null, "
-            + DataProviderContract.STORAGE.NAME + " text not null,"
-            + DataProviderContract.STORAGE.TRIED + " integer default 0,"
-            + DataProviderContract.STORAGE.DIDLOAD + " integer default 0,"
-            + DataProviderContract.STORAGE.DATE + " text not null"
+            + DataProviderContract.STORAGE.PATH + " text, "
+            + DataProviderContract.STORAGE.NAME + " text, "
+            + DataProviderContract.STORAGE.HASHNAME + " text not null,"
+            + DataProviderContract.STORAGE.TRIES + " integer default 0,"//number of times this file was requested
+            + DataProviderContract.STORAGE.DATE + " text,"
+            + "UNIQUE("+DataProviderContract.STORAGE.HASHNAME+")"//makes this field unique, that is, no 2 of it equal
             + ");";
 
     // Defines an helper object for the backing database
@@ -272,7 +273,7 @@ public class DataProvider extends ContentProvider {
                 returnCursor.setNotificationUri(getContext().getContentResolver(), uri);
                 return returnCursor;
             case INVALID_URI:
-                throw new IllegalArgumentException("Query -- Invalid URI:" + uri);
+                throw new IllegalArgumentException("Query -- Invalid URI: " + uri);
         }
         return null;
     }
@@ -299,15 +300,13 @@ public class DataProvider extends ContentProvider {
     @Override
     public Uri insert(Uri uri, ContentValues values) {
         SQLiteDatabase localSQLiteDatabase;
-        long id;
+        long id = 0;
         // Decode the URI to choose which action to take
-        String TABLE = "";
         switch (sUriMatcher.match(uri)) {
             // For the modification messages table
             case MESSAGES_QUERY:
-                // Creates a writeable database or gets one from cache
+                // Creates a writable database or gets one from cache
                 localSQLiteDatabase = mHelper.getWritableDatabase();
-
                 // Inserts the row into the table and returns the new row's _id value
                 id = localSQLiteDatabase.insert(
                         DataProviderContract.MESSAGES.TABLE_NAME,
@@ -327,13 +326,47 @@ public class DataProvider extends ContentProvider {
                 // Creates a writeable database or gets one from cache
                 localSQLiteDatabase = mHelper.getWritableDatabase();
 
+                //lets insert or throw because hashname must be UNIQUE
+                //the app probably will never try to reinsert something that already
+                //exists but just to guarantee...
+                id = localSQLiteDatabase.insertWithOnConflict(
+                        DataProviderContract.STORAGE.TABLE_NAME,
+                        null,
+                        values,
+                        SQLiteDatabase.CONFLICT_REPLACE//row with 'hashname' obviouly must be unique :)
+                );
+
+                // If the insert succeeded, notify a change and return the new row's content URI.
+                if (-1 != id) {
+                    getContext().getContentResolver().notifyChange(uri, null);
+                    return Uri.withAppendedPath(uri, Long.toString(id));
+                } else {
+                    throw new SQLiteException("Insert error:" + uri);
+                }
+                /*
                 // Inserts the row into the table and returns the new row's _id value
                 id = localSQLiteDatabase.insert(
                         DataProviderContract.STORAGE.TABLE_NAME,
                         null,
                         values
                 );
-
+                */
+                /*
+                localSQLiteDatabase.execSQL(
+                        "insert or ignore into "+DataProviderContract.STORAGE.TABLE_NAME
+                                +"("
+                                +DataProviderContract.STORAGE.NAME+","
+                                +DataProviderContract.STORAGE.HASHNAME+","
+                                +DataProviderContract.STORAGE.PATH+","
+                                +DataProviderContract.STORAGE.DIDLOAD+","
+                                +DataProviderContract.STORAGE.TRIED+","
+                                +DataProviderContract.STORAGE.DATE+","
+                                +DataProviderContract.STORAGE.TYPE
+                                +")" +" VALUES "
+                                +"(?, ?, ?, ?, ?, ?, ?)"
+                );
+                */
+                /*
                 // If the insert succeeded, notify a change and return the new row's content URI.
                 if (-1 != id) {
                     getContext().getContentResolver().notifyChange(uri, null);
@@ -342,8 +375,10 @@ public class DataProvider extends ContentProvider {
 
                     throw new SQLiteException("Insert error:" + uri);
                 }
+                */
+                //break;
             case INVALID_URI:
-                throw new IllegalArgumentException("Insert: Invalid URI" + uri);
+                throw new IllegalArgumentException("Insert: Invalid URI " + uri);
         }
 
         return null;
@@ -367,20 +402,23 @@ public class DataProvider extends ContentProvider {
         switch (sUriMatcher.match(uri)) {
             // For the modification messages table
             case MESSAGES_QUERY:
-                Log.d("DATA", "erasing messages");
+                Log.d("DATA", "erasing message");
                 // Creates a writeable database or gets one from cache
                 localSQLiteDatabase = mHelper.getWritableDatabase();
 
                 // Inserts the row into the table and returns the new row's _id value
-                id = localSQLiteDatabase.delete(DataProviderContract.MESSAGES.TABLE_NAME, null, null);
+                id = localSQLiteDatabase.delete(DataProviderContract.MESSAGES.TABLE_NAME, selection, selectionArgs);
+                break;
             case STORAGE_QUERY:
-                Log.d("DATA", "erasing messages");
+                Log.d("DATA", "erasing storage");
                 // Creates a writeable database or gets one from cache
                 localSQLiteDatabase = mHelper.getWritableDatabase();
 
                 // Inserts the row into the table and returns the new row's _id value
-                id = localSQLiteDatabase.delete(DataProviderContract.STORAGE.TABLE_NAME, null, null);            case INVALID_URI:
-                throw new IllegalArgumentException("Query -- Invalid URI:" + uri);
+                id = localSQLiteDatabase.delete(DataProviderContract.STORAGE.TABLE_NAME, selection, selectionArgs);
+                break;
+            case INVALID_URI:
+                throw new IllegalArgumentException("Delete -- Invalid URI:" + uri);
         }
 
         return 0;
@@ -433,11 +471,12 @@ public class DataProvider extends ContentProvider {
                 localSQLiteDatabase = mHelper.getWritableDatabase();
 
                 // Updates the table
-                rows = localSQLiteDatabase.update(
+                rows = localSQLiteDatabase.updateWithOnConflict(
                         DataProviderContract.STORAGE.TABLE_NAME,
                         values,
                         selection,
-                        selectionArgs);
+                        selectionArgs,
+                        SQLiteDatabase.CONFLICT_REPLACE);
 
                 // If the update succeeded, notify a change and return the number of updated rows.
                 if (0 != rows) {
@@ -452,5 +491,6 @@ public class DataProvider extends ContentProvider {
         }
         return -1;
     }
+
 }
 

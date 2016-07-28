@@ -13,7 +13,7 @@ public class DataProviderContract implements BaseColumns{
     private DataProviderContract() { }
 
 
-    public static final int DATABASE_VERSION = 31;//Changing database version makes it
+    public static final int DATABASE_VERSION = 68;//Changing database version makes it delete and recreate the entire database
     // Database table
     public static final String DATABASE_NAME = "sisgrad.db";
 
@@ -38,10 +38,9 @@ public class DataProviderContract implements BaseColumns{
         public static final String TYPE = "type";//0 means Bitmap
         public static final String PATH = "path";
         public static final String NAME = "name";
+        public static final String HASHNAME = "hashname";
+        public static final String TRIES = "tries";
         public static final String DATE = "date";
-        public static final String TRIED = "tried";//true if already tried to load this item, false if not
-        public static final String DIDLOAD = "didload";//true if loaded this item sucecessfully, false if not
-
     }
 
     public class CLASSES {//classes table (stores the classes that a user has in Unesp

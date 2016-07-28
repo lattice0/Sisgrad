@@ -8,7 +8,7 @@
 
     <item
             android:gravity="center"
-            android:drawable="@drawable/unesp"/>
+            android:drawable="@drawable/unesp2"/>
 
 
 </layer-list>

@@ -12,6 +12,8 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -19,11 +21,17 @@ import java.util.Map;
  */
 
 public class MessagesAdapter extends CursorAdapter {
+    //values in seconds
+    private static final long ONE_HOUR = 60*60;
+    private static final long ONE_DAY = ONE_HOUR*24;
+    private static final long ONE_WEEK = ONE_DAY*7;
+    private static final long ONE_MONTH = ONE_DAY*30;
+
     public MessagesAdapter(Context context, Cursor cursor, int flags) {
         super(context, cursor, 0);
     }
 
-    public Map<String, Bitmap> authorImages;
+    public Map<String, Bitmap> authorImages = new HashMap<>();
 
     // The newView method is used to inflate a new view and return it,
     // you don't bind any data to the view at this point.
@@ -48,7 +56,7 @@ public class MessagesAdapter extends CursorAdapter {
         // Extract properties from cursor
         String titleString = cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.TITLE));
         String authorString = cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.AUTHOR));
-        String timeString = cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.SENT_DATE_UNIX));
+        long unixTime = Long.parseLong(cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.SENT_DATE_UNIX)));
         String hasAttachment = cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.ATTACHMENTS));
         ViewGroup attachmentPoint = (ViewGroup) view.findViewById(R.id.attachmentIcon);
 
@@ -60,15 +68,54 @@ public class MessagesAdapter extends CursorAdapter {
             attachmentPoint.addView(attachments, 0, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.FILL_PARENT, ViewGroup.LayoutParams.FILL_PARENT));
         }
         */
+        /*
+        if (authorImages!=null) {
+            //Log.d("mAdapter","log tag for "+cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.AUTHOR)).toLowerCase());
+            Bitmap photo = authorImages.get(cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.AUTHOR)).toLowerCase());
+            if (photo != null) {
+                image.setImageBitmap(photo);
+            }
+        }
+        */
+        String authorName = cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.AUTHOR)).toLowerCase();
+        //loads each bitmap ONCE to authorImages, if they're already loaded, just set them as the image source in 'image' views
+        if (!authorImages.containsKey(authorName)) {
+            try {
+                Bitmap img = ImageManagement.loadImageFromStorage(authorName, context);
+                if (img!=null) {
+                    authorImages.put(authorName, img);
+                    image.setImageBitmap(img);
+                } else {
+                    image.setImageResource(R.mipmap.genericavatar);
 
-        //Log.d("mAdapter","log tag for "+cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.AUTHOR)).toLowerCase());
-        Bitmap photo = authorImages.get(cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.AUTHOR)).toLowerCase());
-        if (photo!=null) {
-            image.setImageBitmap(photo);
+                }
+            } catch (Exception e) {
+
+            }
+        } else {
+            try {
+                image.setImageBitmap(authorImages.get(authorName));
+            } catch (Exception e) {
+
+            }
+        }
+        Date date = new Date();
+        long currentTime = date.getTime()/1000;
+        long difference = currentTime-unixTime;
+        long differenceInSeconds = difference;
+        String timeText = "";
+        //Log.d("adapter", "name: "+authorName+" currentTime: "+currentTime+" unixTime: "+unixTime+" difference: "+difference);
+        if (differenceInSeconds<ONE_HOUR) {//less than 1 hour
+            timeText = Double.valueOf(Math.floor(differenceInSeconds/60)).intValue()+"min";
+        } else if (differenceInSeconds<ONE_DAY) {//less than 1 day
+            timeText = Double.valueOf(Math.floor(differenceInSeconds/(60*60))).intValue()+"h";
+        } else if (differenceInSeconds<ONE_WEEK){
+            timeText = " seg";
+        } else {
+            timeText = "22/05";
         }
 
-
-        java.util.Date timeDate =new java.util.Date(Long.parseLong(timeString)*1000);
+        //java.util.Date timeDate =new java.util.Date(Long.parseLong(unixTime)*1000);
         String messageString = "";
         String a = cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.MESSAGE));
         //Log.d("CURSOR", "message is "+a);
@@ -96,7 +143,7 @@ public class MessagesAdapter extends CursorAdapter {
                 */
             }
         }
-        time.setText("08:20");
+        time.setText(timeText);
         //cursor.close();
     }
 }

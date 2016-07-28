@@ -1,11 +1,22 @@
 package com.lucaszanella.sisgrad;
 
-//My own crawlers
+/*
+* Lucas Zanella
+*
+* Fragment that will display the last messages from the Sisgrad's system, and also load
+* the image of each author through Lattes system.
+* If you're new to development, this fragment uses the following concepts:
+* CursorLoader
+* ContentProviders
+* AsyncTask
+* Bitmaps and circular image viewers
+*/
 
 import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.DatabaseUtils;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -28,21 +39,12 @@ import com.lucaszanella.SisgradCrawler.SisgradCrawler;
 import org.json.JSONObject;
 
 import java.net.URL;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/*
-* Lucas Zanella
-*
-* Fragment that will display the last messages from the Sisgrad's system, and also load
-* the image of each author through Lattes system.
-* If you're new to development, this fragment uses the following concepts:
-* CursorLoader
-* ContentProviders
-* AsyncTask
-* Bitmaps and circular image viewers
-*/
+//My own crawlers
 
 public class MessagesFragment extends Fragment implements
         LoaderManager.LoaderCallbacks<Cursor> {
@@ -57,9 +59,7 @@ public class MessagesFragment extends Fragment implements
     SwipeRefreshLayout mSwipeRefreshLayout;//swipe refresh object for messages list
 
     //Sets that keep track of things
-    Map<String, Boolean> setOfMessageIds = new HashMap<>();//Stores a map of messageId and a Boolean: true if the message for this id was already loaded, false if not
-    Map<String, Integer> setOfTeacherNames = new HashMap<>();//Stores a temporary set of teacher names so each photo can be loaded from memory (name of the photo is hex(sha256(teacherName)))
-    Map<String, Bitmap> listOfTeacherAndBitmaps;//Stores the bitmaps of each message author, to be inflated into the messagesAdapter
+    Map<String, Boolean> listOfAuthors = new HashMap<>();//Stores the name of each author, one time only, so their photos can be searched at Lattes
 
     //AsyncTask objects for the first AsyncTask execution (AsyncTasks can only be executed once)
     GetMessages messageUpdaterTask = new GetMessages();//Task that updates messages
@@ -97,6 +97,7 @@ public class MessagesFragment extends Fragment implements
     onItemSelected mCallback;
 
     public interface onItemSelected {//interface to be implemented by the main activity to receive the clicks
+
         void onMessageSelected(String id, String provisoryTitle);
     }
 
@@ -110,14 +111,60 @@ public class MessagesFragment extends Fragment implements
             throw new ClassCastException("must implement SellFragmentListener");
         }
     }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        /*
+        //--------------------------------------------
+        //Cursor Tests
+        String selection = DataProviderContract.MESSAGES.MESSAGE+"=?";
+        String[] arguments = {"null"};//we're gonna get only the null messages, so we can load their content
+
+        String[] projection = {//columns to return from query
+                DataProviderContract.MESSAGES.MESSAGE_ID,
+                DataProviderContract.MESSAGES.MESSAGE,
+                DataProviderContract.MESSAGES.SENT_DATE_UNIX
+        };
+        Cursor c1 = getContext().getContentResolver().query(
+                DataProviderContract.MESSAGES_URI,
+                projection,
+                null,
+                null,
+                DataProviderContract.MESSAGES.SENT_DATE_UNIX+" DESC"
+        );//load messages
+        String id = "20435271";
+        Log.d(LOG_TAG, "does cursor contains message id "+id+" ? "+CursorUtils.Contains(c1,id,DataProviderContract.MESSAGES.MESSAGE_ID));
+        Log.d(LOG_TAG, "does cursor contains message id "+id+" ? "+CursorUtils.Contains(c1,id,DataProviderContract.MESSAGES.MESSAGE_ID));
+
+        //--------------------------------------------
+        */
+
+        //DUMP STORAGE CURSOR-------------------------
+        String selection2 = DataProviderContract.STORAGE.TYPE + "=?";
+        String[] arguments2 = {"0"};//type 0 means: retrieve all author bitmaps
+
+        String[] projection2 = {//columns to return from query
+                DataProviderContract.STORAGE.HASHNAME,
+                DataProviderContract.STORAGE.TYPE,
+                DataProviderContract.STORAGE.DATE,
+                DataProviderContract.STORAGE.TRIES
+        };
+        Cursor i = getContext().getContentResolver().query(
+                DataProviderContract.STORAGE_URI,
+                projection2,
+                selection2,
+                arguments2,
+                null//no order
+        );
+
+        Log.d(LOG_TAG, "STORAGE DUMP: "+ DatabaseUtils.dumpCursorToString(i));
+        //--------------------------------------------
         Log.d(LOG_TAG, "MESSAGES FRAGMENT CREATED");
         Sisgrad app = ((Sisgrad) getContext().getApplicationContext());//Gets the global object that stores login information
         login = app.getLoginObject();//gets the login object from the global object
-        loadTeacherImagesToAdapter();
-        ImageManagement.DumpCursor(getContext());
+        //loadTeacherImagesToAdapter();
+        //ImageManagement.DumpCursor(getContext());
         getLoaderManager().initLoader(URL_LOADER, null, this);//calls the cursorLoader
         loginUpdaterTask.execute(login);//start login process (or resume it)
     }
@@ -159,7 +206,7 @@ public class MessagesFragment extends Fragment implements
 
                         if (messageUpdaterTask.getStatus() == AsyncTask.Status.FINISHED) {
                             messageUpdaterTask = new GetMessages();
-                            messageUpdaterTask.execute(login);
+                            messageUpdaterTask.execute();
                         }
                     }
                 }
@@ -173,7 +220,7 @@ public class MessagesFragment extends Fragment implements
                         0 // No flags
                 );//sets the adapter for the list of messages
 
-        mAdapter.authorImages = listOfTeacherAndBitmaps;
+        //mAdapter.authorImages = listOfTeacherAndBitmaps;
         // Sets the adapter for the view
         mListView.setAdapter(mAdapter);
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -211,7 +258,7 @@ public class MessagesFragment extends Fragment implements
                         mProjection,     // Projection to return
                         null,            // No selection clause
                         null,            // No selection arguments
-                        DataProviderContract.MESSAGES.SENT_DATE_UNIX+" DESC"             // Arrange by earliest
+                        DataProviderContract.MESSAGES.SENT_DATE_UNIX + " DESC"             // Arrange by earliest
                 );
             default:
                 Log.d(LOG_TAG, "NULL chosen");
@@ -253,8 +300,8 @@ public class MessagesFragment extends Fragment implements
         protected Boolean doInBackground(SisgradCrawler... loginObject) {
             Log.d(LOG_TAG, "login AsyncTask called");
             SisgradCrawler login = loginObject[0];
-            mountListOfMessageIds();
-            mountListOfTeacherNames();
+            //mountListOfMessageIds();
+            //mountListOfTeacherNames();
             try {
                 login.loginToSentinela();
                 return true;
@@ -271,111 +318,60 @@ public class MessagesFragment extends Fragment implements
 
         protected void onPostExecute(Boolean loginResult) {
             Log.d(LOG_TAG, "login sucessful, now getting messages list");
-            messageUpdaterTask.execute(login);
+            messageUpdaterTask.execute();
+            new loadNewMessage().execute();
         }
     }
-    /*
-    * AsyncTask to finally load the messages from the server (not the content, just the metadata of each message).
-    * Each message must be loaded from the message code in this metadata (yeah, webcrawling sucks...)
-    */
-    private class GetMessages extends AsyncTask<SisgradCrawler, Integer, List<Map<String, String>>> {
-        protected List<Map<String, String>> doInBackground(SisgradCrawler... login) {
+
+    private class GetMessages extends AsyncTask<Void, Integer, Boolean> {
+        protected Boolean doInBackground(Void... nothing) {
             Log.d(LOG_TAG, "getting messages");
-            List<Map<String, String>> messages = null;
             try {
-                messages = login[0].getMessages(0);//gets the first page of messages
-                Log.d("MAIN", "got messages");
-                for (Map<String, String> messageMap : messages) {//iterates through the messages
-                    String newId = messageMap.get("messageId");
-                    if (!setOfMessageIds.containsKey(newId)) {
+                List<Map<String, String>> messages = login.getMessages(0);//gets the first page of messages
+                Log.d(LOG_TAG, "got messages");
+
+                //Mount cursor of message IDs so we can see if the new message ID is contained in it
+                //If yes, don't do anything, else, the message is a new message and must be included in the database
+                String[] projection = {//columns to return from query
+                        DataProviderContract.MESSAGES.MESSAGE_ID,
+                        DataProviderContract.MESSAGES.MESSAGE,
+                        DataProviderContract.MESSAGES.SENT_DATE_UNIX
+                };
+                //Just use this cursor here, otherwise there'll be concurrency in the CursorUtils.Contains and
+                //any other thing trying to access it.
+                Cursor c = getContext().getContentResolver().query(
+                        DataProviderContract.MESSAGES_URI,
+                        projection,
+                        null,
+                        null,
+                        DataProviderContract.MESSAGES.SENT_DATE_UNIX + " DESC"
+                );//load messages
+                for (Map<String, String> message : messages) {//iterates through the messages
+                    String id = message.get("messageId");
+                    if (!CursorUtils.Contains(c, id, DataProviderContract.MESSAGES.MESSAGE_ID)) {
                         //if this message is not included in the setOfMessageIds, add it to the database
                         ContentValues values = new ContentValues();//the method of inserting data into the database is through a ContentProvider
                         //values.put(MessagesTable.COLUMN_ID, id);
-                        values.put(DataProviderContract.MESSAGES.TITLE, messageMap.get("title"));
-                        values.put(DataProviderContract.MESSAGES.AUTHOR, messageMap.get("author"));
-                        values.put(DataProviderContract.MESSAGES.MESSAGE_ID, messageMap.get("messageId"));
-                        values.put(DataProviderContract.MESSAGES.SENT_DATE, messageMap.get("sentDate"));
-                        values.put(DataProviderContract.MESSAGES.SENT_DATE_UNIX, messageMap.get("sentDateUnix"));
-                        values.put(DataProviderContract.MESSAGES.READ_DATE, messageMap.get("readDate"));
+                        values.put(DataProviderContract.MESSAGES.TITLE, message.get("title"));
+                        values.put(DataProviderContract.MESSAGES.AUTHOR, message.get("author"));
+                        values.put(DataProviderContract.MESSAGES.MESSAGE_ID, message.get("messageId"));
+                        values.put(DataProviderContract.MESSAGES.SENT_DATE, message.get("sentDate"));
+                        values.put(DataProviderContract.MESSAGES.SENT_DATE_UNIX, message.get("sentDateUnix"));
+                        values.put(DataProviderContract.MESSAGES.READ_DATE, message.get("readDate"));
                         values.putNull(DataProviderContract.MESSAGES.MESSAGE);
                         values.put(DataProviderContract.MESSAGES.ACESSED_DATE, "");
                         values.put(DataProviderContract.MESSAGES.DID_READ, 0);
                         getContext().getContentResolver().insert(DataProviderContract.MESSAGES_URI, values);//stores message metadata into database
-                        setOfMessageIds.put(newId, false);//put messageId and 'false' in setOfMessageIds, so the fragment can load it later
+                        Log.d(LOG_TAG, "adding new message of id: " + id);
+                        //setOfMessageIds.put(newId, false);//put messageId and 'false' in setOfMessageIds, so the fragment can load it later
                     } else {
-
+                        //Log.d(LOG_TAG, "cursor contains message already for "+id);
                     }
                 }
+                c.close();
 
             } catch (Exception e) {
                 e.printStackTrace();
-            }
-            return messages;
-        }
-
-        protected void onProgressUpdate(Integer progress) {
-            //setProgressPercent(progress[0]);
-        }
-
-        protected void onPostExecute(List<Map<String, String>> messages) {
-            progress.setVisibility(View.GONE);
-            mSwipeRefreshLayout.setRefreshing(false);
-            /*
-            * Now the AsyncTask that loads the first unloaded message from setOfMessageIds will be called.
-            * Here, two will be called, so there is always two AsyncTask's running. Not too much but
-            * it works fine. Every time one terminates, a new one is called, until all keys of setOfMessageIds
-            * are true (that is, all message contents are loaded)
-            */
-            new loadEarliestUnloadedMessageFromMap().execute();
-            new loadEarliestUnloadedMessageFromMap().execute();
-            /*
-            * Now the AsyncTask that loads the first unloaded message from setOfTeacherIds will be called.
-            * Here, two will be called, so there is always two AsyncTask's running. Not too much but
-            * it works fine. Every time one terminates, a new one is called, until all keys of setOfTeacherIds
-            * are true (that is, all teacher images are loaded or failed to load)
-            */
-            new loadEarliestTeacherImageFromMap().execute();
-            new loadEarliestTeacherImageFromMap().execute();
-
-        }
-    }
-    /*
-    * This is the AsyncTask that loads each message's content. It analyzes setOfMessageIds and the key
-    * correspondent to messageId is set to false, then load its message and update into the database through
-    * a contentProvider.
-    */
-    private class loadEarliestUnloadedMessageFromMap extends AsyncTask<Void, Integer, Boolean> {
-        protected Boolean doInBackground(Void... s) {
-            if (setOfMessageIds != null) {
-                for (String id : setOfMessageIds.keySet()) {//Iterates over the key set :)
-                    if (!setOfMessageIds.get(id)) {//verifies if value mapped to this  key id is false. If yes, loads a message. (the value of the key itentifies if the key has a message in the database)
-                        try {
-                            Log.d(LOG_TAG, "loading message for "+id);
-                            setOfMessageIds.put(id, true);
-                            SisgradCrawler.GetMessageResponse response = login.getMessage(id, true);//true means: get the HTML of message, false is for text-only
-                            if (response.message.length() > 5) {
-                                ContentValues values = new ContentValues();
-                                values.put(DataProviderContract.MESSAGES.MESSAGE, response.message);
-                                if (response.attachments!=null) {
-                                    String jsonAttachments = new JSONObject(response.attachments).toString();
-                                    //Log.d(LOG_TAG,"JSON MESSAGE:"+jsonAttachments);
-                                    values.put(DataProviderContract.MESSAGES.ATTACHMENTS, jsonAttachments);
-                                }
-                                getContext().getContentResolver().update(DataProviderContract.MESSAGES_URI, values, DataProviderContract.MESSAGES.MESSAGE_ID + " = ?", new String[]{id});
-
-                                //map.put(id, true);
-                                //Log.d(LOG_TAG, "loaded and updated the following message: " + message.toString() + " of id " + id);
-                            } else {
-                                Log.d(LOG_TAG, "error inside runnable");
-                                //just try once, them let the function recursively call itself if more teachers have number 0
-                            }
-                        } catch (Exception e) {
-                            setOfMessageIds.put(id, false);
-                            e.printStackTrace();
-                        }
-                    } else {
-                    }
-                }
             }
             return true;
         }
@@ -384,155 +380,289 @@ public class MessagesFragment extends Fragment implements
             //setProgressPercent(progress[0]);
         }
 
-        protected void onPostExecute(Boolean loadAgain) {
-            /* starts another loadEarliestUnloadedMessageFromMap when this one finished
-             * they'll stop loading when all keys in setOfMessageIds are set to false
-             */
-            if (setOfMessageIds.containsValue(false)) {
-                new loadEarliestUnloadedMessageFromMap().execute();
-            }
+        protected void onPostExecute(Boolean result) {
+            progress.setVisibility(View.GONE);
+            mSwipeRefreshLayout.setRefreshing(false);
+            /*
+            * Now the AsyncTask that loads the first unloaded message from setOfMessageIds will be called.
+            * Here, two will be called, so there is always two AsyncTask's running. Not too much but
+            * it works fine. Every time one terminates, a new one is called, until all keys of setOfMessageIds
+            * are true (that is, all message contents are loaded)
+            */
+            new loadNewMessage().execute();
+            new loadNewMessage().execute();
+
+            /*
+            * Now the AsyncTask that loads the first unloaded message from setOfTeacherIds will be called.
+            * Here, two will be called, so there is always two AsyncTask's running. Not too much but
+            * it works fine. Every time one terminates, a new one is called, until all keys of setOfTeacherIds
+            * are true (that is, all teacher images are loaded or failed to load)
+            */
+            new loadNewAvatar().execute();
+            //new loadNewAvatar().execute();
         }
     }
-    /*
-    * This is the AsyncTask that loads each message author image. It analyzes setOfMessageIds and the key
-    * correspondent to messageId is set to false, then load its image.
+
+    //-------------------------------------------
+     /*
+    * AsyncTask to finally load the messages from the server (not the content, just the metadata of each message).
+    * It loads a cursor of messages with null content, and then load the content for the first message in the cursor.
+    * This AsyncTask will recursively call itself until all the messages are loaded. If you can more than one  of this
+    * AsyncTask, it'll load more than one message per time. Two or three messages at the same time should do fine.
     */
-    private class loadEarliestTeacherImageFromMap extends AsyncTask<Void, Integer, Void> {
-        protected Void doInBackground(Void... s) {
-            if (setOfTeacherNames != null && lattes != null) {
-                for (String teacher : setOfTeacherNames.keySet()) {//Iterates over the key set :)
-                    if (setOfTeacherNames.get(teacher) == 0) {//verifies if value mapped to this  key id is 0, that means, a photo needs to be loaded
-                        try {
-                            Log.d(LOG_TAG, "searching for teacher "+teacher);
-                            LattesCrawler.requestObject response = lattes.search(teacher);
-                            if (response.teachedId != null && !response.teachedId.isEmpty()) {
-                                Log.d(LOG_TAG, "calling image download, save and register for teacher "+teacher);
-                                Bitmap teacherImage = ImageManagement.getBitmapHTTP(new URL(response.teacherURLImage));
-                                ImageManagement.Tuple f =  ImageManagement.saveImage(teacherImage, teacher, getContext());//already lowercase, I guess
-                                ImageManagement.registerImage(f, getContext());
-                                setOfTeacherNames.put(teacher, 2);
-                            } else {
-                                setOfTeacherNames.put(teacher, 1);
-                                ImageManagement.registerFailedAttempt(new ImageManagement.Tuple(Sha256Hex.hash(teacher.toLowerCase()),""), getContext());
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            ImageManagement.registerFailedAttempt(new ImageManagement.Tuple(Sha256Hex.hash(teacher.toLowerCase()),""), getContext());
-                            setOfTeacherNames.put(teacher, 1);
-                        }
-                        loadTeacherImagesToAdapter();
-                        break;//just try once, them let the function recursively call itself if more teachers have number 0
-                    }
+    private class loadNewMessage extends AsyncTask<Void, Integer, Boolean> {
+        protected Boolean doInBackground(Void... nothing) {
+            Log.d(LOG_TAG, "loadMessage called");
+
+            String selection = DataProviderContract.MESSAGES.MESSAGE + " IS NULL ";
+            //String[] arguments = {null};//we're gonna get only the null messages, so we can load their content
+
+            String[] projection = {//columns to return from query
+                    DataProviderContract.MESSAGES.MESSAGE_ID,
+                    DataProviderContract.MESSAGES.MESSAGE,
+                    DataProviderContract.MESSAGES.SENT_DATE_UNIX
+            };
+            Cursor nullMessages = getContext().getContentResolver().query(
+                    DataProviderContract.MESSAGES_URI,
+                    projection,
+                    selection,
+                    null,
+                    DataProviderContract.MESSAGES.SENT_DATE_UNIX + " DESC"
+            );//load messages
+
+            //Log.d(LOG_TAG, "CursorDump: "+DatabaseUtils.dumpCursorToString(nullMessages));
+
+            //the warning that the for does not loop is expected
+            //TODO: make it always get the first item, don't need this loop
+            //for (nullMessages.moveToFirst(); !nullMessages.isAfterLast(); nullMessages.moveToNext()) {
+            if (nullMessages!=null) {
+                //Log.d(LOG_TAG, "NOT NULL");
+                if (nullMessages.getCount() > 0) {
+                    //we'll always get the first null message and save it to the database
+                    nullMessages.moveToFirst();
+                    String currentMessageId = nullMessages.getString(nullMessages.getColumnIndex(DataProviderContract.MESSAGES.MESSAGE_ID));
+                    getMessageAndSaveToDatabase(currentMessageId);
+                    nullMessages.close();
+                    return true;//true means 'load again, the cursor was not empty'
+                } else {
+                    nullMessages.close();
                 }
-            }
-            return null;
+            }//no need to close if it's null, remember
+
+            //if this line is reached, then no more messages with null content were found
+            //so let's tell onPostExecute to finish calling this AsyncTask recursively.
+            return false;
         }
 
         protected void onProgressUpdate(Integer progress) {
             //setProgressPercent(progress[0]);
         }
 
-        protected void onPostExecute(Void nothing) {
-            /* starts another loadEarliestUnloadedMessageFromMap when this one finished
-             * they'll stop loading when all keys in setOfMessageIds are set to false
-             */
-            //if the set still contains values with 0, load one more teacher image
-            if (setOfTeacherNames.containsValue(0)) {//TODO: add support for recognizing the number 1 and try to load it again after 3 days or so
-                Log.d(LOG_TAG, setOfTeacherNames.toString());
-                new loadEarliestTeacherImageFromMap().execute();
-            }
-        }
-    }
-
-    private void mountListOfMessageIds() {
-        /*
-         * Fills setOfMessageIds with the key/value: messageId/Boolean where Boolean is true if the message was already loaded
-         */
-        Log.d(LOG_TAG, "mounting message IDs");
-        setOfMessageIds.clear();//clears everytime, because this function can be called all time
-
-        String[] projection = {//just intersted in message ID and message content
-                DataProviderContract.MESSAGES.MESSAGE_ID,
-                DataProviderContract.MESSAGES.MESSAGE,
-        };
-        Cursor cursorOfMessageIds = getContext().getContentResolver().query(DataProviderContract.MESSAGES_URI, projection, null, null, DataProviderContract.MESSAGES.SENT_DATE_UNIX+" DESC");//load messages
-
-        for (cursorOfMessageIds.moveToFirst(); !cursorOfMessageIds.isAfterLast(); cursorOfMessageIds.moveToNext()) {
-            Boolean hasMessage = false;
-            if (cursorOfMessageIds.getString(cursorOfMessageIds.getColumnIndex(DataProviderContract.MESSAGES.MESSAGE)) != null) {//see if message is null (if it is, later the fragment will load it)
-                hasMessage = true;
-            }
-            String messageId = cursorOfMessageIds.getString(cursorOfMessageIds.getColumnIndex(DataProviderContract.MESSAGES.MESSAGE_ID));
-            setOfMessageIds.put(messageId, hasMessage);//insert the pair messageId/Boolean
-
-        }
-        cursorOfMessageIds.close();//always close the cursor!
-        Log.d(LOG_TAG, "setOfMessageIds: "+setOfMessageIds.toString());
-    }
-
-    private void mountListOfTeacherNames() {
-        Log.d(LOG_TAG, "mounting teacher names");
-        setOfTeacherNames.clear();
-
-        String[] projection = {
-                DataProviderContract.MESSAGES.AUTHOR
-        };
-        String[] projection2 = {
-                DataProviderContract.STORAGE.NAME,
-                DataProviderContract.STORAGE.TRIED,
-                DataProviderContract.STORAGE.DIDLOAD
-        };
-        Cursor cursorOfTeacherNames = getContext().getContentResolver().query(DataProviderContract.MESSAGES_URI, projection, null, null, DataProviderContract.MESSAGES.SENT_DATE_UNIX+" DESC");//load me
-        for (cursorOfTeacherNames.moveToFirst(); !cursorOfTeacherNames.isAfterLast(); cursorOfTeacherNames.moveToNext()) {
-            Integer photoStatus = 0;//0 if did not even try, 1 if did try but couldn't load, 2 if did try and did load.
-            String currentTeacher = cursorOfTeacherNames.getString(cursorOfTeacherNames.getColumnIndex(DataProviderContract.MESSAGES.AUTHOR)).toLowerCase();//remember to always put to lowercase
-            //cursorOfTeacherNames.getString(cursorOfTeacherNames.getColumnIndex(DataProviderContract.STORAGE.NAME)).toLowerCase();//remember to always put to lowercase
-            if (!setOfTeacherNames.containsKey(currentTeacher)) {
-                setOfTeacherNames.put(currentTeacher, photoStatus);
-            }
-
-        }
-        for (String teacherName: setOfTeacherNames.keySet()) {
-            Integer photoStatus = 0;//0 if did not even try, 1 if did try but couldn't load, 2 if did try and did load.
-            String selection = DataProviderContract.STORAGE.NAME+"=?";
-            String[] arguments = {Sha256Hex.hash(teacherName)};
-            Cursor cursorOfFiles = getContext().getContentResolver().query(DataProviderContract.STORAGE_URI, projection2, selection, arguments, null);
-            if(cursorOfFiles!=null && cursorOfFiles.getCount()>0) {
-                cursorOfFiles.moveToFirst();
-                Integer didTry = cursorOfFiles.getInt(cursorOfFiles.getColumnIndex(DataProviderContract.STORAGE.TRIED));
-                Integer didLoad = cursorOfFiles.getInt(cursorOfFiles.getColumnIndex(DataProviderContract.STORAGE.DIDLOAD));
-                if (didTry==0 && didLoad==0) {
-                    photoStatus = 0;
-                } else if (didTry==1 && didLoad==0) {
-                    photoStatus = 1;
-                } else if (didTry==1 && didLoad==1) {
-                    photoStatus = 2;
-                }
+        protected void onPostExecute(Boolean result) {
+            if (result) {
+                new loadNewMessage().execute();//if true, call itself again, until all messages are loaded
             } else {
-                photoStatus = 0;
+                Log.d(LOG_TAG, "ended loadNewMessage");
             }
-            setOfTeacherNames.put(teacherName, photoStatus);
-            cursorOfFiles.close();
         }
-        cursorOfTeacherNames.close();
-        System.out.println("set of teacher names :" + setOfTeacherNames);
     }
 
-    public void loadTeacherImagesToAdapter() {
-        mountListOfTeacherNames();
-        listOfTeacherAndBitmaps = new HashMap<>();
-        for (String teacher: setOfTeacherNames.keySet()) {
-            try {
-                Bitmap image = ImageManagement.loadImageFromStorage(teacher, getContext());
-                if (image != null) {
-                    listOfTeacherAndBitmaps.put(teacher.toLowerCase(), image);
-                    //mAdapter.authorImages.put(teacher, image);
+    //makes part of the AsyncTask above
+    private void getMessageAndSaveToDatabase(String messageId) {//simply get the message content given an Id and save it to the database
+        try {
+            Log.d(LOG_TAG, "loading message for " + messageId);
+            SisgradCrawler.GetMessageResponse response = login.getMessage(messageId, true);//true means: get the HTML of message, false is for text-only
+            if (response.message.length() > 5) {
+                ContentValues values = new ContentValues();
+                values.put(DataProviderContract.MESSAGES.MESSAGE, response.message);
+                if (response.attachments != null) {
+                    String jsonAttachments = new JSONObject(response.attachments).toString();
+                    //Log.d(LOG_TAG,"JSON MESSAGE:"+jsonAttachments);
+                    values.put(DataProviderContract.MESSAGES.ATTACHMENTS, jsonAttachments);
                 }
-            } catch(Exception e) {
-                //
+                getContext().getContentResolver().update(DataProviderContract.MESSAGES_URI, values, DataProviderContract.MESSAGES.MESSAGE_ID + " = ?", new String[]{messageId});
+            } else {
+                Log.d(LOG_TAG, "error inside asynctask for messageId: " + messageId);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /*
+    * This is the AsyncTask that download and save each avatar. It makes a list of message authors
+    * with no image, and try to load them.
+    */
+    private class loadNewAvatar extends AsyncTask<Void, Integer, Boolean> {
+        protected Boolean doInBackground(Void... s) {
+            Log.d(LOG_TAG, "loadNewAvatar called");
+            //--------------------------------------------------------
+            //Cursor that will query the message authors
+            String[] projection = {//columns to return from query
+                    DataProviderContract.MESSAGES.AUTHOR,
+            };
+            Cursor authors = getContext().getContentResolver().query(
+                    DataProviderContract.MESSAGES_URI,
+                    projection,
+                    null,//no selection, let's query all messages
+                    null,//no arguments for selection, obviously
+                    DataProviderContract.MESSAGES.SENT_DATE_UNIX + " DESC"
+            );
+            //--------------------------------------------------------
+            //Create a list of author names, where each one appears only once, so we can check them later at the database
+            if (authors!=null) {//TODO: Merge this with the 'for' below
+                for (authors.moveToFirst(); !authors.isAfterLast(); authors.moveToNext()) {
+                    //Important: we're gonna use lowercase in everything from now, when regarding the author name
+                    //TODO: remove .toLowercase of everything else
+                    String author = authors.getString(authors.getColumnIndex(DataProviderContract.MESSAGES.AUTHOR)).toLowerCase();
+                    if (!listOfAuthors.keySet().contains(author)) {
+                        listOfAuthors.put(author, false);//false means we didn't work with this author data yet
+                    }
+                }
+            }
+            authors.close();
+            Log.d(LOG_TAG, "set of authors BEFORE processing: "+listOfAuthors);
+            //Now we're gonna see which authors didn't ave any information about its avatar image in the database
+            //and create the entries for it, so in the next recursive call of this AsyncTask, it gets loaded
+            for (String author : listOfAuthors.keySet()) {
+                String authorHash = Sha256Hex.hash(author.toLowerCase());//file name is the author name, but hashed
+
+                //Cursor that will query information about this specific author
+                String selection2 = DataProviderContract.STORAGE.HASHNAME + "=?";
+                String[] arguments2 = {authorHash};//TODO: add the type of the image
+
+                String[] projection2 = {//columns to return from query
+                        DataProviderContract.STORAGE.NAME,
+                        DataProviderContract.STORAGE.HASHNAME,
+                        DataProviderContract.STORAGE.TRIES,
+                        DataProviderContract.STORAGE.DATE
+                };
+                Cursor authorInformation = getContext().getContentResolver().query(
+                        DataProviderContract.STORAGE_URI,
+                        projection2,
+                        selection2,
+                        arguments2,
+                        null//no order
+                );
+                //Log.d(LOG_TAG, "author: "+author+" dump: "+DatabaseUtils.dumpCursorToString(authorInformation));
+                //Now let's see if there's no records about this name on the database. If there's none,
+                //then we add it to the database
+                if (authorInformation!=null && !(authorInformation.getCount()>0)) {
+                    String unixTime = Long.toString(new Date().getTime() / 1000);
+
+                    ContentValues values = new ContentValues();
+                    values.put(DataProviderContract.STORAGE.NAME, author);
+                    values.put(DataProviderContract.STORAGE.HASHNAME, authorHash);
+                    values.put(DataProviderContract.STORAGE.PATH, "");
+                    values.put(DataProviderContract.STORAGE.DATE, unixTime);
+                    values.put(DataProviderContract.STORAGE.TYPE, 0);//type 0 is the type for the files that store author bitmaps
+                    values.put(DataProviderContract.STORAGE.TRIES, 0);//means we tried to load this file from database 0 times
+                    getContext().getContentResolver().insert(DataProviderContract.STORAGE_URI, values);
+                    Log.d(LOG_TAG, "added to storage: "+author);
+                    //return true;//search again
+                } else {
+                    //if name in database, update its status in listOfAuthors
+                    Long currentTime = new Date().getTime()/1000;
+
+                    if (authorInformation!=null) {
+                        authorInformation.moveToFirst();
+                        //Long authorTime = Long.parseLong(CursorUtils.FindString(images, authorHash, DataProviderContract.STORAGE.HASHNAME, DataProviderContract.STORAGE.DATE));
+                        Long authorTime = authorInformation.getLong(authorInformation.getColumnIndex(DataProviderContract.STORAGE.DATE));
+                        Integer numberOfTries = authorInformation.getInt(authorInformation.getColumnIndex(DataProviderContract.STORAGE.TRIES));//number of times we tried to get the file
+
+                        //if the file is x second old and we tried to load it no more than 5 times, try again, this
+                        //prevents the app from trying to load an non-existing image eternally
+                        //OR, if numberOfTries==0, it means we just added this file to the database, so let's give our first try
+                        if ((currentTime - authorTime > 60 * 60 && numberOfTries <= 5) || numberOfTries == 0) {
+                            //Log.d(LOG_TAG, "author: "+author+" currentTime - authorTime = "+ (currentTime - authorTime)+" numberOfTries = "+numberOfTries);
+                            //Log.d(LOG_TAG, "file " + authorHash + " is x seconds old, marking to reload...");
+                            listOfAuthors.put(author, false);//mark as false so the system will reload it
+                        } else {
+                            //Log.d(LOG_TAG, "file " + authorHash + " is NOT 1 hour old, marking to NOT reload...");
+                            Log.d(LOG_TAG, "currentTime: " + currentTime);
+                            Log.d(LOG_TAG, "authorTime: " + authorTime);
+                            Log.d(LOG_TAG, "Difference: " + (currentTime - authorTime));
+                            listOfAuthors.put(author, true);//mark as true so we don't try to load again, because file is not 3 days old
+                        }
+                    }
+                }
+                if (authorInformation!=null){authorInformation.close();}
+            }
+            Log.d(LOG_TAG, "set of authors AFTER processing: "+listOfAuthors);
+            for (String author : listOfAuthors.keySet()) {
+                if (!listOfAuthors.get(author)) {//if no work has been done to this author
+                    try {
+                        Log.d(LOG_TAG, "searching for message author " + author.toLowerCase());
+                        LattesCrawler.requestObject response = lattes.search(author.toLowerCase());
+                        if (response.teachedId != null && !response.teachedId.isEmpty()) {
+                            Log.d(LOG_TAG, "calling image download, save and register for author " + author.toLowerCase());
+                            //TODO: make it save while downloads, so no big file is loaded to the memory
+                            Bitmap teacherImage = ImageManagement.getBitmapHTTP(new URL(response.teacherURLImage));//HTTP with no s sucks, but that's the only way the server accepts...
+                            ImageManagement.IMGData f = ImageManagement.saveImage(teacherImage, author.toLowerCase(), getContext());//already lowercase, I guess
+                            ImageManagement.registerImage(f, getContext());
+                            listOfAuthors.put(author, true);//true means we tried
+                        } else {
+                            ImageManagement.registerFailedAttempt(new ImageManagement.IMGData(author.toLowerCase(), Sha256Hex.hash(author.toLowerCase()), ""), getContext());
+                            listOfAuthors.put(author, true);//true means we tried
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        ImageManagement.registerFailedAttempt(new ImageManagement.IMGData(author.toLowerCase(), Sha256Hex.hash(author.toLowerCase()), ""), getContext());
+                        listOfAuthors.put(author, true);//true means we tried
+                    }
+                    //we're gonna break by returning true when we found our first unloaded element,
+                    //and then true will be returned so the AsyncTask will call itself again
+                    return true;
+                }
+            }
+            //if none of the 'if's up there got triggered, it means no author needs to be loaded
+            //so lets just return false and the AsyncTask will stop calling itself recursively
+            return false;
+        }
+
+        protected void onProgressUpdate(Integer progress) {
+            //setProgressPercent(progress[0]);
+        }
+
+        protected void onPostExecute(Boolean result) {
+            // starts another loadEarliestUnloadedMessageFromMap when this one finished
+            // they'll stop loading when all keys in setOfMessageIds are set to false
+            //
+            //if the set still contains values with 0, load one more teacher image
+            if (result) {
+                new loadNewAvatar().execute();
+            } else {
+                Log.d(LOG_TAG, "loadNewAvatar ended");
             }
         }
-        Log.d(LOG_TAG, "listOfTeacherAndBitmaps: +"+listOfTeacherAndBitmaps);
-        //mAdapter.authorImages = listOfTeacherAndBitmaps;
+    }
+
+    //-------------------------------------------
+    /*
+    * AsyncTask to finally load the messages from the server (not the content, just the metadata of each message).
+    * Each message must be loaded from the message code in this metadata (yeah, webcrawling sucks...)
+    */
+    private static class CursorUtils {
+        public static Boolean Contains(Cursor cursor, String value, String columnName) {
+            //cursor.moveToFirst();
+            for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
+                if (cursor.getString(cursor.getColumnIndex(columnName)).equals(value)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        public static String FindString(Cursor cursor, String value, String columnToSearch, String columnToGetValue) {
+            //cursor.moveToFirst();
+            for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
+                if (cursor.getString(cursor.getColumnIndex(columnToSearch)).equals(value)) {
+                    return (cursor.getString(cursor.getColumnIndex(columnToGetValue)));
+                }
+            }
+            return null;
+        }
     }
 }
+
+
+
