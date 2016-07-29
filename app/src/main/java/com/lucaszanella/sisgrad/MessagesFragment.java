@@ -67,6 +67,8 @@ public class MessagesFragment extends Fragment implements
 
     private static final int URL_LOADER = 0;//loader code for DataProvider (just one database is loaded here, but let's use this code anyway)
 
+    private static final Integer IMAGES_CACHE_LIMIT = 60 * 60 * 24 * 2;//Time to reload all author images from Lattes, in seconds
+
     private Cursor actualCursor = null;//cursor for messages list (mAdapter)
 
     private MessagesAdapter mAdapter;//adapter for messages list
@@ -573,7 +575,7 @@ public class MessagesFragment extends Fragment implements
                         //if the file is x second old and we tried to load it no more than 5 times, try again, this
                         //prevents the app from trying to load an non-existing image eternally
                         //OR, if numberOfTries==0, it means we just added this file to the database, so let's give our first try
-                        if ((currentTime - authorTime > 60 * 60 && numberOfTries <= 5) || numberOfTries == 0) {
+                        if ((currentTime - authorTime > IMAGES_CACHE_LIMIT && numberOfTries <= 5) || numberOfTries == 0) {
                             //Log.d(LOG_TAG, "author: "+author+" currentTime - authorTime = "+ (currentTime - authorTime)+" numberOfTries = "+numberOfTries);
                             //Log.d(LOG_TAG, "file " + authorHash + " is x seconds old, marking to reload...");
                             listOfAuthors.put(author, false);//mark as false so the system will reload it

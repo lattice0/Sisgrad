@@ -21,6 +21,7 @@ import android.widget.TextView;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -77,7 +78,6 @@ public class ReadMessageFragment extends Fragment implements
 
         Log.d(LOG_TAG, "reading message of messageid: "+messageId);
         Log.d(LOG_TAG, "the messageId string is: "+messageIdArray[0]);
-        Log.d(LOG_TAG, "selection clause is: "+selection);
 
         switch (loaderID) {
             case URL_LOADER:
@@ -128,6 +128,7 @@ public class ReadMessageFragment extends Fragment implements
         String messageAuthor = actualCursor.getString(actualCursor.getColumnIndex(DataProviderContract.MESSAGES.AUTHOR));
         String rawMessage = actualCursor.getString(actualCursor.getColumnIndex(DataProviderContract.MESSAGES.MESSAGE));
         String attachmentsJson = actualCursor.getString(actualCursor.getColumnIndex(DataProviderContract.MESSAGES.ATTACHMENTS));
+        long unixTime = Long.parseLong(actualCursor.getString(actualCursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.SENT_DATE_UNIX)));
         String poorlyProcessedMessage = "";
         if (rawMessage!=null) {
             poorlyProcessedMessage = Html.fromHtml(rawMessage).toString();
@@ -136,7 +137,9 @@ public class ReadMessageFragment extends Fragment implements
         //Sets the loaded data to the ui elements
         title.setText(messageTitle);
         author.setText(messageAuthor);
-
+        long currentTime = new Date().getTime()/1000;
+        String timeText = TimeAgo.TimeAgo(currentTime, unixTime);
+        time.setText(timeText);
         Bitmap image = ImageManagement.loadImageFromStorage(messageAuthor.toLowerCase(), getContext());
         if (image!=null) {
             authorImageView.setImageBitmap(image);

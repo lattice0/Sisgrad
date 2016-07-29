@@ -101,19 +101,10 @@ public class MessagesAdapter extends CursorAdapter {
         }
         Date date = new Date();
         long currentTime = date.getTime()/1000;
-        long difference = currentTime-unixTime;
-        long differenceInSeconds = difference;
+
         String timeText = "";
         //Log.d("adapter", "name: "+authorName+" currentTime: "+currentTime+" unixTime: "+unixTime+" difference: "+difference);
-        if (differenceInSeconds<ONE_HOUR) {//less than 1 hour
-            timeText = Double.valueOf(Math.floor(differenceInSeconds/60)).intValue()+"min";
-        } else if (differenceInSeconds<ONE_DAY) {//less than 1 day
-            timeText = Double.valueOf(Math.floor(differenceInSeconds/(60*60))).intValue()+"h";
-        } else if (differenceInSeconds<ONE_WEEK){
-            timeText = " seg";
-        } else {
-            timeText = "22/05";
-        }
+        timeText = TimeAgo.TimeAgo(currentTime, unixTime);
 
         //java.util.Date timeDate =new java.util.Date(Long.parseLong(unixTime)*1000);
         String messageString = "";
