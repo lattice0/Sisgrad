@@ -76,8 +76,14 @@ public class ImageManagement extends AppCompatActivity{
         if(cursorOfFiles!=null && cursorOfFiles.getCount()>0) {
             cursorOfFiles.moveToFirst();
             String path = cursorOfFiles.getString(cursorOfFiles.getColumnIndex(DataProviderContract.STORAGE.PATH));
+            cursorOfFiles.close();
             ContextWrapper cw = new ContextWrapper(context.getApplicationContext());
             File filePath = new File(path, fileName);//create directory and file
+            if (filePath.exists()) {
+                //imageView.setImageBitmap(decodeBitmapEfficiently(imgFile));
+                return decodeBitmapEfficiently(filePath);
+            }
+            /*
             try {
                 //File f = new File(context.getFilesDir(), fileName);
                 Bitmap b = BitmapFactory.decodeStream(new FileInputStream(filePath));
@@ -85,8 +91,7 @@ public class ImageManagement extends AppCompatActivity{
             } catch (FileNotFoundException e) {
 
                 //Log.d(LOG_TAG, "file not found for " + name+ " path "+path+ " filename "+fileName);
-                cursorOfFiles.close();
-                /*
+                ///*
                 File f = directory;
                 File file[] = f.listFiles();
                 Log.d("Files", "Size: "+ file.length);
@@ -94,13 +99,40 @@ public class ImageManagement extends AppCompatActivity{
                 {
                     Log.d("Files", "FileName:" + file[i].getName());
                 }
-                */
+                ///*
                 return null;
             }
-        } else {
+            */
+        } else if (cursorOfFiles!=null){
             //Log.d(LOG_TAG, "null or empty cursor");
+            cursorOfFiles.close();
         }
-        cursorOfFiles.close();
+        return null;
+    }
+
+    // Decode image and scale it to reduce memory consumption
+    public static Bitmap decodeBitmapEfficiently(File f) {
+        try {
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(new FileInputStream(f), null, o);
+
+            // The new size we want to scale to, the bigger the better of quality
+            final int REQUIRED_SIZE = 200;
+
+            // Find the correct scale value. It should be the power of 2.
+            int scale = 1;
+            while (o.outWidth / scale / 2 >= REQUIRED_SIZE &&
+                    o.outHeight / scale / 2 >= REQUIRED_SIZE) {
+                scale *= 2;
+            }
+
+            // Decode with inSampleSize
+            BitmapFactory.Options o2 = new BitmapFactory.Options();
+            o2.inSampleSize = scale;
+            return BitmapFactory.decodeStream(new FileInputStream(f), null, o2);
+        } catch (FileNotFoundException e) {
+        }
         return null;
     }
     //just a simple tuple to return the file name and path when saving it

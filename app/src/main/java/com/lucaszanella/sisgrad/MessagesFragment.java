@@ -521,7 +521,7 @@ public class MessagesFragment extends Fragment implements
                 }
             }
             authors.close();
-            Log.d(LOG_TAG, "set of authors BEFORE processing: "+listOfAuthors);
+            //Log.d(LOG_TAG, "set of authors BEFORE processing: "+listOfAuthors);
             //Now we're gonna see which authors didn't ave any information about its avatar image in the database
             //and create the entries for it, so in the next recursive call of this AsyncTask, it gets loaded
             for (String author : listOfAuthors.keySet()) {
@@ -579,9 +579,9 @@ public class MessagesFragment extends Fragment implements
                             listOfAuthors.put(author, false);//mark as false so the system will reload it
                         } else {
                             //Log.d(LOG_TAG, "file " + authorHash + " is NOT 1 hour old, marking to NOT reload...");
-                            Log.d(LOG_TAG, "currentTime: " + currentTime);
-                            Log.d(LOG_TAG, "authorTime: " + authorTime);
-                            Log.d(LOG_TAG, "Difference: " + (currentTime - authorTime));
+                            //Log.d(LOG_TAG, "currentTime: " + currentTime);
+                            //Log.d(LOG_TAG, "authorTime: " + authorTime);
+                            //Log.d(LOG_TAG, "Difference: " + (currentTime - authorTime));
                             listOfAuthors.put(author, true);//mark as true so we don't try to load again, because file is not 3 days old
                         }
                     }
