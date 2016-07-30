@@ -52,7 +52,7 @@ public class MessagesFragment extends Fragment implements
     private static final String LOG_TAG = "MessagesFragment";//name for the Log.d function for this class
 
     //WebCrawlers
-    private SisgradCrawler login;
+    private Sisgrad app;//Global login object
     private LattesCrawler lattes = new LattesCrawler();
 
     View progress;//updating list progress object
@@ -67,7 +67,7 @@ public class MessagesFragment extends Fragment implements
 
     private static final int URL_LOADER = 0;//loader code for DataProvider (just one database is loaded here, but let's use this code anyway)
 
-    private static final Integer IMAGES_CACHE_LIMIT = 60 * 60 * 24 * 2;//Time to reload all author images from Lattes, in seconds
+    private static final Integer IMAGES_CACHE_LIMIT = 2* TimeAgo.ONE_DAY;//Time to reload all author images from Lattes, in seconds
 
     private Cursor actualCursor = null;//cursor for messages list (mAdapter)
 
@@ -163,12 +163,12 @@ public class MessagesFragment extends Fragment implements
         Log.d(LOG_TAG, "STORAGE DUMP: "+ DatabaseUtils.dumpCursorToString(i));
         //--------------------------------------------
         Log.d(LOG_TAG, "MESSAGES FRAGMENT CREATED");
-        Sisgrad app = ((Sisgrad) getContext().getApplicationContext());//Gets the global object that stores login information
-        login = app.getLoginObject();//gets the login object from the global object
+        app = ((Sisgrad) getContext().getApplicationContext());//Gets the global object that stores login information
+        //login = app.getLoginObject();//gets the login object from the global object
         //loadTeacherImagesToAdapter();
         //ImageManagement.DumpCursor(getContext());
         getLoaderManager().initLoader(URL_LOADER, null, this);//calls the cursorLoader
-        loginUpdaterTask.execute(login);//start login process (or resume it)
+        loginUpdaterTask.execute();//start login process (or resume it)
     }
 
     @Override
@@ -298,30 +298,38 @@ public class MessagesFragment extends Fragment implements
     /*
     * AsyncTask to do login or resume the login's cookies
     */
-    private class DoOrResumeLogin extends AsyncTask<SisgradCrawler, Integer, Boolean> {
-        protected Boolean doInBackground(SisgradCrawler... loginObject) {
+    private class DoOrResumeLogin extends AsyncTask<Void, Integer, Integer> {
+        protected Integer doInBackground(Void... nothing) {
             Log.d(LOG_TAG, "login AsyncTask called");
-            SisgradCrawler login = loginObject[0];
+
             //mountListOfMessageIds();
             //mountListOfTeacherNames();
             try {
-                login.loginToSentinela();
-                return true;
+                return app.DoOrResumeLogin();
             } catch (Exception e) {
                 e.printStackTrace();
-                Log.d(LOG_TAG, "login error");
-                return false;
+                return Sisgrad.PAGE_ERROR;
             }
         }
 
         protected void onProgressUpdate(Integer progress) {
             //setProgressPercent(progress[0]);
         }
-
-        protected void onPostExecute(Boolean loginResult) {
-            Log.d(LOG_TAG, "login sucessful, now getting messages list");
-            messageUpdaterTask.execute();
-            new loadNewMessage().execute();
+        //TODO: implement each error accordingly
+        protected void onPostExecute(Integer loginResult) {
+            if (loginResult.equals(Sisgrad.OK)) {
+                Log.d(LOG_TAG, "login successful, now getting messages list");
+                messageUpdaterTask.execute();
+                new loadNewMessage().execute();
+            } else if (loginResult.equals(Sisgrad.WRONG_PASSWORD)){
+                //maybe password was changed
+            } else if (loginResult.equals(Sisgrad.WRONG_EMAIL)){
+                //shouldn't give this error, email never changes
+            } else if (loginResult.equals(Sisgrad.NOT_FOUND)) {
+                //page not found
+            } else if (loginResult.equals(Sisgrad.GENERIC_ERROR)) {
+                //alert of this generic error
+            }
         }
     }
 
@@ -329,7 +337,7 @@ public class MessagesFragment extends Fragment implements
         protected Boolean doInBackground(Void... nothing) {
             Log.d(LOG_TAG, "getting messages");
             try {
-                List<Map<String, String>> messages = login.getMessages(0);//gets the first page of messages
+                List<Map<String, String>> messages = app.getLoginObject().getMessages(0);//gets the first page of messages
                 Log.d(LOG_TAG, "got messages");
 
                 //Mount cursor of message IDs so we can see if the new message ID is contained in it
@@ -473,7 +481,7 @@ public class MessagesFragment extends Fragment implements
     private void getMessageAndSaveToDatabase(String messageId) {//simply get the message content given an Id and save it to the database
         try {
             Log.d(LOG_TAG, "loading message for " + messageId);
-            SisgradCrawler.GetMessageResponse response = login.getMessage(messageId, true);//true means: get the HTML of message, false is for text-only
+            SisgradCrawler.GetMessageResponse response = app.getLoginObject().getMessage(messageId, true);//true means: get the HTML of message, false is for text-only
             if (response.message.length() > 5) {
                 ContentValues values = new ContentValues();
                 values.put(DataProviderContract.MESSAGES.MESSAGE, response.message);
@@ -484,7 +492,7 @@ public class MessagesFragment extends Fragment implements
                 }
                 getContext().getContentResolver().update(DataProviderContract.MESSAGES_URI, values, DataProviderContract.MESSAGES.MESSAGE_ID + " = ?", new String[]{messageId});
             } else {
-                Log.d(LOG_TAG, "error inside asynctask for messageId: " + messageId);
+                Log.d(LOG_TAG, "error inside AsyncTask for messageId: " + messageId);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -596,7 +604,7 @@ public class MessagesFragment extends Fragment implements
                     try {
                         Log.d(LOG_TAG, "searching for message author " + author.toLowerCase());
                         LattesCrawler.requestObject response = lattes.search(author.toLowerCase());
-                        if (response.teachedId != null && !response.teachedId.isEmpty()) {
+                        if (response.teacherId != null && !response.teacherId.isEmpty()) {
                             Log.d(LOG_TAG, "calling image download, save and register for author " + author.toLowerCase());
                             //TODO: make it save while downloads, so no big file is loaded to the memory
                             Bitmap teacherImage = ImageManagement.getBitmapHTTP(new URL(response.teacherURLImage));//HTTP with no s sucks, but that's the only way the server accepts...

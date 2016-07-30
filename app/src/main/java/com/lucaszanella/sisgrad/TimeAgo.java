@@ -29,9 +29,10 @@ public class TimeAgo {
         Long differenceInSeconds = unixNow - unixBefore;
         String timeText = "";
         if (differenceInSeconds<ONE_HOUR) {//less than 1 hour
-            timeText = ApproximateQuantity(differenceInSeconds/ONE_HOUR)+"min";
+            timeText = ApproximateQuantity(differenceInSeconds/ONE_MINUTE)+"min";
         } else if (differenceInSeconds<ONE_DAY) {//less than 1 day
-            timeText = ApproximateQuantity(differenceInSeconds/ONE_DAY)+"h";
+            timeText = ApproximateQuantity(differenceInSeconds/ONE_HOUR)+"h";
+            //Log.d("TIME", "difference in seconds: "+differenceInSeconds);
         } else if (differenceInSeconds<ONE_WEEK){
             timeText = returnDay(unixBefore);
         } else {

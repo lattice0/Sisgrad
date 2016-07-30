@@ -21,6 +21,8 @@
     <string name="error_invalid_email">Este email é inválido</string>
     <string name="error_invalid_password">Senha muito pequena</string>
     <string name="error_incorrect_password">Senha errada</string>
+    <string name="error_incorrect_email">Email não existe</string>
+
     <string name="error_field_required">Este campo é obrigatório</string>
 
     <string name="title_activity_read_messages">ReadMessagesActivity</string>

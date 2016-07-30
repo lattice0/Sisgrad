@@ -1,43 +1,27 @@
 package com.lucaszanella.sisgrad;
 
+import android.database.Cursor;
+import android.os.AsyncTask;
+import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
-import android.support.v4.widget.CursorAdapter;
-//import android.app.LoaderManager;
-import android.content.ContentValues;
-//import android.content.CursorLoader;
-//import android.content.Loader;
-import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.os.AsyncTask;
-import android.content.Context;
-import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-//import android.widget.CursorAdapter;
-
-
-import android.widget.ListView;
 import android.widget.TextView;
 
-import com.lucaszanella.SisgradCrawler.*;
+import com.lucaszanella.SisgradCrawler.SisgradCrawler;
 
-import org.w3c.dom.Text;
-
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+
+//import android.app.LoaderManager;
+//import android.content.CursorLoader;
+//import android.content.Loader;
+//import android.widget.CursorAdapter;
 
 public class ClassesFragment extends Fragment implements
         LoaderManager.LoaderCallbacks<Cursor> {
@@ -112,21 +96,21 @@ public class ClassesFragment extends Fragment implements
     private class getClasses extends AsyncTask<SisgradCrawler, Integer, Map<String, List<Map<String, String>>>> {
         protected Map<String, List<Map<String, String>>>  doInBackground(SisgradCrawler... login) {
             Log.d("getting messages NOW", "");
-            Map<String, List<Map<String, String>>>  messages = null;
+            Map<String, List<Map<String, String>>>  classes = null;
             try {
-                messages = login[0].getClasses();
-                Log.d("MAIN", "got classes");
+                classes = login[0].getClasses();
+                Log.d(LOG_TAG, "got classes: "+classes);
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            return messages;
+            return classes;
         }
 
         protected void onProgressUpdate(Integer progress) {
             //setProgressPercent(progress[0]);
         }
 
-        protected void onPostExecute(List<Map<String, String>> messages) {
+        protected void onPostExecute(List<Map<String, String>> classes) {
             //text.setText(messages.get(0).toString());
             //showDialog("Downloaded " + result + " bytes");
         }
