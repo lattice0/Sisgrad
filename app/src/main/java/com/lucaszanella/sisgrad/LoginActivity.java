@@ -214,7 +214,7 @@ public class LoginActivity extends AppCompatActivity {
 
                 Sisgrad app = ((Sisgrad)getApplicationContext());//gets global login object, see Sisgrad class for more information
                 app.createLoginObject(username, password);//registers username and password in the global object
-                return app.doOrResumeLogin(null);
+                return app.doOrResumeLogin(false);
                 /*
                 SisgradCrawler login = app.getLoginObject();//gets the login object
 
@@ -250,6 +250,7 @@ public class LoginActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Integer error) {
             mAuthTask = null;
+            //Todo: use built in SentinelaLoginObject's error codes
             if (error.equals(Sisgrad.OK)) {
                 Intent mainIntent = new Intent(LoginActivity.this,MainActivity.class);
                 LoginActivity.this.startActivity(mainIntent);

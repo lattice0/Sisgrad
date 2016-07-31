@@ -301,14 +301,27 @@ public class MessagesFragment extends Fragment implements
     /*
     * AsyncTask to do login or resume the login's cookies
     */
-    private class DoOrResumeLogin extends AsyncTask<Boolean, Integer, Integer> {
-        protected Integer doInBackground(Boolean... forceRelogin) {
+    private class DoOrResumeLogin extends AsyncTask<Void, Integer, Integer> {
+        private Boolean forceRelogin = false;
+        private final Boolean DONT_FORCE_LOGIN = false;
+        private final Boolean FORCE_LOGIN = true;
+
+        //In case we want to force a login without verifying if the session timed out:
+        public void forceRelogin() {
+            this.forceRelogin = true;
+        }
+
+        protected Integer doInBackground(Void... nothing) {
             Log.d(LOG_TAG, "login AsyncTask called");
 
             //mountListOfMessageIds();
             //mountListOfTeacherNames();
             try {
-                return app.doOrResumeLogin(forceRelogin[0]);
+                if (forceRelogin) {
+                    return app.doOrResumeLogin(FORCE_LOGIN);
+                } else {
+                    return app.doOrResumeLogin(DONT_FORCE_LOGIN);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
                 return Sisgrad.PAGE_ERROR;
@@ -399,8 +412,6 @@ public class MessagesFragment extends Fragment implements
                 } else {
                     return PAGE_ERROR;//TODO: think in a way to display the error code to the user, that is, pass the error to onPostExecute
                 }
-            } catch (SisgradCrawler.LoginTimeoutException e) {
-                return TIMEOUT;
             } catch (Exception e) {
                 e.printStackTrace();
                 return EXCEPTION;
@@ -433,8 +444,6 @@ public class MessagesFragment extends Fragment implements
             */
                 new LoadNewAvatar().execute();
                 //new loadNewAvatar().execute();
-            } else if (result==TIMEOUT) {
-
             }
         }
     }

@@ -52,9 +52,9 @@ public class Sisgrad extends Application {
         //Just re-login, don't bother deciding if it's a necessity. Normally will be called when
         //a request got a LoginTimedOut exception because it was redirected by a location HTTP header.
         if (forceRelogin) {
-            Log.d(LOG_TAG, "redoing login");
+            Log.d(LOG_TAG, "forcing relogin");
             SisgradCrawler.SentinelaLoginObject a = this.login.loginToSentinela();
-            Log.d(LOG_TAG, "login successful");
+            Log.d(LOG_TAG, "force login successful");
             return OK;
         }
         if (this.alreadyCreatedLoginObject && ((currentUnix-this.lastLoginSuccess)>=LOGIN_TIMEOUT || this.lastLoginSuccess==0)) {//lastLoginSuccess==0 means it was just created, never assigned a value
