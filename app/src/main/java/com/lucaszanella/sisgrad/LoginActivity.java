@@ -214,7 +214,7 @@ public class LoginActivity extends AppCompatActivity {
 
                 Sisgrad app = ((Sisgrad)getApplicationContext());//gets global login object, see Sisgrad class for more information
                 app.createLoginObject(username, password);//registers username and password in the global object
-                return app.DoOrResumeLogin();
+                return app.doOrResumeLogin(null);
                 /*
                 SisgradCrawler login = app.getLoginObject();//gets the login object
 

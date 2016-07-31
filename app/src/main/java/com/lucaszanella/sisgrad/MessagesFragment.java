@@ -67,7 +67,7 @@ public class MessagesFragment extends Fragment implements
 
     private static final int URL_LOADER = 0;//loader code for DataProvider (just one database is loaded here, but let's use this code anyway)
 
-    private static final Integer IMAGES_CACHE_LIMIT = 2* TimeAgo.ONE_DAY;//Time to reload all author images from Lattes, in seconds
+    private static final Integer IMAGES_CACHE_LIMIT = 2* TimeAgo.ONE_DAY;//Time, in seconds, to reload all author images from Lattes, in seconds
 
     private Cursor actualCursor = null;//cursor for messages list (mAdapter)
 
@@ -88,14 +88,17 @@ public class MessagesFragment extends Fragment implements
     //returns an instance of this fragment to be attached in MainActivity
     public static MessagesFragment newInstance(int page, String title) {
         MessagesFragment fragmentFirst = new MessagesFragment();
+
         Bundle args = new Bundle();
         args.putInt("0", page);//TODO: remove these args
         args.putString("title", title);
         fragmentFirst.setArguments(args);
+
         return fragmentFirst;
     }
 
     //UI creation process in order they're executed
+    //---------------------------------------------
     onItemSelected mCallback;
 
     public interface onItemSelected {//interface to be implemented by the main activity to receive the clicks
@@ -298,14 +301,14 @@ public class MessagesFragment extends Fragment implements
     /*
     * AsyncTask to do login or resume the login's cookies
     */
-    private class DoOrResumeLogin extends AsyncTask<Void, Integer, Integer> {
-        protected Integer doInBackground(Void... nothing) {
+    private class DoOrResumeLogin extends AsyncTask<Boolean, Integer, Integer> {
+        protected Integer doInBackground(Boolean... forceRelogin) {
             Log.d(LOG_TAG, "login AsyncTask called");
 
             //mountListOfMessageIds();
             //mountListOfTeacherNames();
             try {
-                return app.DoOrResumeLogin();
+                return app.doOrResumeLogin(forceRelogin[0]);
             } catch (Exception e) {
                 e.printStackTrace();
                 return Sisgrad.PAGE_ERROR;
@@ -319,10 +322,13 @@ public class MessagesFragment extends Fragment implements
         protected void onPostExecute(Integer loginResult) {
             if (loginResult.equals(Sisgrad.OK)) {
                 Log.d(LOG_TAG, "login successful, now getting messages list");
+                //Executes the AsyncTask that will update the messages list
                 messageUpdaterTask.execute();
-                new loadNewMessage().execute();
+                //Starts the chain reaction of message loaders, which are AsyncTasks that recursively call themselves until
+                //all message contents are loaded
+                new LoadNewMessage().execute();
             } else if (loginResult.equals(Sisgrad.WRONG_PASSWORD)){
-                //maybe password was changed
+                //maybe password was changed during execution of this app. TODO: properly warns the user
             } else if (loginResult.equals(Sisgrad.WRONG_EMAIL)){
                 //shouldn't give this error, email never changes
             } else if (loginResult.equals(Sisgrad.NOT_FOUND)) {
@@ -333,74 +339,91 @@ public class MessagesFragment extends Fragment implements
         }
     }
 
-    private class GetMessages extends AsyncTask<Void, Integer, Boolean> {
-        protected Boolean doInBackground(Void... nothing) {
+    private class GetMessages extends AsyncTask<Void, Integer, Integer> {
+        private static final int OK = 0;
+        private static final int TIMEOUT = 1;
+        private static final int EXCEPTION = 2;
+        private static final int PAGE_ERROR = 3;
+
+        protected Integer doInBackground(Void... nothing) {
             Log.d(LOG_TAG, "getting messages");
             try {
-                List<Map<String, String>> messages = app.getLoginObject().getMessages(0);//gets the first page of messages
+                SisgradCrawler.GetMessagesResponse getMessagesResponse = app.getLoginObject().getMessages(0);//gets the first page of messages
                 Log.d(LOG_TAG, "got messages");
-
-                //Mount cursor of message IDs so we can see if the new message ID is contained in it
-                //If yes, don't do anything, else, the message is a new message and must be included in the database
-                String[] projection = {//columns to return from query
-                        DataProviderContract.MESSAGES.MESSAGE_ID,
-                        DataProviderContract.MESSAGES.MESSAGE,
-                        DataProviderContract.MESSAGES.SENT_DATE_UNIX
-                };
-                //Just use this cursor here, otherwise there'll be concurrency in the CursorUtils.Contains and
-                //any other thing trying to access it.
-                Cursor c = getContext().getContentResolver().query(
-                        DataProviderContract.MESSAGES_URI,
-                        projection,
-                        null,
-                        null,
-                        DataProviderContract.MESSAGES.SENT_DATE_UNIX + " DESC"
-                );//load messages
-                for (Map<String, String> message : messages) {//iterates through the messages
-                    String id = message.get("messageId");
-                    if (!CursorUtils.Contains(c, id, DataProviderContract.MESSAGES.MESSAGE_ID)) {
-                        //if this message is not included in the setOfMessageIds, add it to the database
-                        ContentValues values = new ContentValues();//the method of inserting data into the database is through a ContentProvider
-                        //values.put(MessagesTable.COLUMN_ID, id);
-                        values.put(DataProviderContract.MESSAGES.TITLE, message.get("title"));
-                        values.put(DataProviderContract.MESSAGES.AUTHOR, message.get("author"));
-                        values.put(DataProviderContract.MESSAGES.MESSAGE_ID, message.get("messageId"));
-                        values.put(DataProviderContract.MESSAGES.SENT_DATE, message.get("sentDate"));
-                        values.put(DataProviderContract.MESSAGES.SENT_DATE_UNIX, message.get("sentDateUnix"));
-                        values.put(DataProviderContract.MESSAGES.READ_DATE, message.get("readDate"));
-                        values.putNull(DataProviderContract.MESSAGES.MESSAGE);
-                        values.put(DataProviderContract.MESSAGES.ACESSED_DATE, "");
-                        values.put(DataProviderContract.MESSAGES.DID_READ, 0);
-                        getContext().getContentResolver().insert(DataProviderContract.MESSAGES_URI, values);//stores message metadata into database
-                        Log.d(LOG_TAG, "adding new message of id: " + id);
-                        //setOfMessageIds.put(newId, false);//put messageId and 'false' in setOfMessageIds, so the fragment can load it later
-                    } else {
-                        //Log.d(LOG_TAG, "cursor contains message already for "+id);
+                if (getMessagesResponse.pageError==null) {
+                    List<Map<String, String>> messages = getMessagesResponse.messages;//actual messages
+                    //Mount cursor of message IDs so we can see if the new message ID is contained in it
+                    //If yes, don't do anything, else, the message is a new message and must be included in the database
+                    String[] projection = {//columns to return from query
+                            DataProviderContract.MESSAGES.MESSAGE_ID,
+                            DataProviderContract.MESSAGES.MESSAGE,
+                            DataProviderContract.MESSAGES.SENT_DATE_UNIX
+                    };
+                    //Let's query the messages already in the database
+                    Cursor c = getContext().getContentResolver().query(
+                            DataProviderContract.MESSAGES_URI,
+                            projection,
+                            null,
+                            null,
+                            DataProviderContract.MESSAGES.SENT_DATE_UNIX + " DESC"
+                    );
+                    for (Map<String, String> message : messages) {//iterates through the messages
+                        String id = message.get("messageId");
+                        //TODO: substitute Contains by database query
+                        if (!CursorUtils.Contains(c, id, DataProviderContract.MESSAGES.MESSAGE_ID)) {
+                            //if this message is not included in the setOfMessageIds, add it to the database
+                            ContentValues values = new ContentValues();//the method of inserting data into the database is through a ContentProvider
+                            //values.put(MessagesTable.COLUMN_ID, id);
+                            values.put(DataProviderContract.MESSAGES.TITLE, message.get("title"));
+                            values.put(DataProviderContract.MESSAGES.AUTHOR, message.get("author"));
+                            values.put(DataProviderContract.MESSAGES.MESSAGE_ID, message.get("messageId"));
+                            values.put(DataProviderContract.MESSAGES.SENT_DATE, message.get("sentDate"));
+                            values.put(DataProviderContract.MESSAGES.SENT_DATE_UNIX, message.get("sentDateUnix"));
+                            values.put(DataProviderContract.MESSAGES.READ_DATE, message.get("readDate"));
+                            values.putNull(DataProviderContract.MESSAGES.MESSAGE);
+                            values.put(DataProviderContract.MESSAGES.ACESSED_DATE, "");
+                            values.put(DataProviderContract.MESSAGES.DID_READ, 0);
+                            getContext().getContentResolver().insert(DataProviderContract.MESSAGES_URI, values);//stores message metadata into database
+                            Log.d(LOG_TAG, "adding new message of id: " + id);
+                            //setOfMessageIds.put(newId, false);//put messageId and 'false' in setOfMessageIds, so the fragment can load it later
+                        } else {
+                            //Log.d(LOG_TAG, "cursor contains message already for "+id);
+                        }
                     }
+                    if (c != null) {
+                        c.close();
+                    }
+                    if (messages.size() > 0) {
+                        return OK;
+                    }
+                } else {
+                    return PAGE_ERROR;//TODO: think in a way to display the error code to the user, that is, pass the error to onPostExecute
                 }
-                c.close();
-
+            } catch (SisgradCrawler.LoginTimeoutException e) {
+                return TIMEOUT;
             } catch (Exception e) {
                 e.printStackTrace();
+                return EXCEPTION;
             }
-            return true;
+            return null;
         }
 
         protected void onProgressUpdate(Integer progress) {
             //setProgressPercent(progress[0]);
         }
 
-        protected void onPostExecute(Boolean result) {
+        protected void onPostExecute(Integer result) {
             progress.setVisibility(View.GONE);
             mSwipeRefreshLayout.setRefreshing(false);
+            if (result==OK) {
             /*
             * Now the AsyncTask that loads the first unloaded message from setOfMessageIds will be called.
             * Here, two will be called, so there is always two AsyncTask's running. Not too much but
             * it works fine. Every time one terminates, a new one is called, until all keys of setOfMessageIds
             * are true (that is, all message contents are loaded)
             */
-            new loadNewMessage().execute();
-            new loadNewMessage().execute();
+                new LoadNewMessage().execute();
+                new LoadNewMessage().execute();
 
             /*
             * Now the AsyncTask that loads the first unloaded message from setOfTeacherIds will be called.
@@ -408,8 +431,11 @@ public class MessagesFragment extends Fragment implements
             * it works fine. Every time one terminates, a new one is called, until all keys of setOfTeacherIds
             * are true (that is, all teacher images are loaded or failed to load)
             */
-            new loadNewAvatar().execute();
-            //new loadNewAvatar().execute();
+                new LoadNewAvatar().execute();
+                //new loadNewAvatar().execute();
+            } else if (result==TIMEOUT) {
+
+            }
         }
     }
 
@@ -420,7 +446,7 @@ public class MessagesFragment extends Fragment implements
     * This AsyncTask will recursively call itself until all the messages are loaded. If you can more than one  of this
     * AsyncTask, it'll load more than one message per time. Two or three messages at the same time should do fine.
     */
-    private class loadNewMessage extends AsyncTask<Void, Integer, Boolean> {
+    private class LoadNewMessage extends AsyncTask<Void, Integer, Boolean> {
         protected Boolean doInBackground(Void... nothing) {
             Log.d(LOG_TAG, "loadMessage called");
 
@@ -440,11 +466,6 @@ public class MessagesFragment extends Fragment implements
                     DataProviderContract.MESSAGES.SENT_DATE_UNIX + " DESC"
             );//load messages
 
-            //Log.d(LOG_TAG, "CursorDump: "+DatabaseUtils.dumpCursorToString(nullMessages));
-
-            //the warning that the for does not loop is expected
-            //TODO: make it always get the first item, don't need this loop
-            //for (nullMessages.moveToFirst(); !nullMessages.isAfterLast(); nullMessages.moveToNext()) {
             if (nullMessages!=null) {
                 //Log.d(LOG_TAG, "NOT NULL");
                 if (nullMessages.getCount() > 0) {
@@ -457,7 +478,7 @@ public class MessagesFragment extends Fragment implements
                 } else {
                     nullMessages.close();
                 }
-            }//no need to close if it's null, remember
+            }//don't close cursor if it's null, remember
 
             //if this line is reached, then no more messages with null content were found
             //so let's tell onPostExecute to finish calling this AsyncTask recursively.
@@ -470,7 +491,7 @@ public class MessagesFragment extends Fragment implements
 
         protected void onPostExecute(Boolean result) {
             if (result) {
-                new loadNewMessage().execute();//if true, call itself again, until all messages are loaded
+                new LoadNewMessage().execute();//if true, call itself again, until all messages are loaded
             } else {
                 Log.d(LOG_TAG, "ended loadNewMessage");
             }
@@ -503,7 +524,7 @@ public class MessagesFragment extends Fragment implements
     * This is the AsyncTask that download and save each avatar. It makes a list of message authors
     * with no image, and try to load them.
     */
-    private class loadNewAvatar extends AsyncTask<Void, Integer, Boolean> {
+    private class LoadNewAvatar extends AsyncTask<Void, Integer, Boolean> {
         protected Boolean doInBackground(Void... s) {
             Log.d(LOG_TAG, "loadNewAvatar called");
             //--------------------------------------------------------
@@ -530,7 +551,7 @@ public class MessagesFragment extends Fragment implements
                     }
                 }
             }
-            authors.close();
+            if (authors!=null) {authors.close();}
             //Log.d(LOG_TAG, "set of authors BEFORE processing: "+listOfAuthors);
             //Now we're gonna see which authors didn't ave any information about its avatar image in the database
             //and create the entries for it, so in the next recursive call of this AsyncTask, it gets loaded
@@ -599,6 +620,7 @@ public class MessagesFragment extends Fragment implements
                 if (authorInformation!=null){authorInformation.close();}
             }
             Log.d(LOG_TAG, "set of authors AFTER processing: "+listOfAuthors);
+
             for (String author : listOfAuthors.keySet()) {
                 if (!listOfAuthors.get(author)) {//if no work has been done to this author
                     try {
@@ -640,7 +662,7 @@ public class MessagesFragment extends Fragment implements
             //
             //if the set still contains values with 0, load one more teacher image
             if (result) {
-                new loadNewAvatar().execute();
+                new LoadNewAvatar().execute();
             } else {
                 Log.d(LOG_TAG, "loadNewAvatar ended");
             }

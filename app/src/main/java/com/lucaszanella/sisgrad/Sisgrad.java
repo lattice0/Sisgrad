@@ -45,10 +45,18 @@ public class Sisgrad extends Application {
         }
     }
 
-    public synchronized Integer DoOrResumeLogin() throws Exception {
-        //TODO: identify if never logged in, or if login is about to timeout. Differentiate between timedout, about to time out, and session open
+    public synchronized Integer doOrResumeLogin(Boolean forceRelogin) throws Exception {
+        //TODO: identify if never logged in, or if login is about to timeout. Differentiate between timed out, about to time out, and session open
         Log.d(LOG_TAG, "DoOrResumeLogin called");
         Long currentUnix = new Date().getTime()/1000;
+        //Just re-login, don't bother deciding if it's a necessity. Normally will be called when
+        //a request got a LoginTimedOut exception because it was redirected by a location HTTP header.
+        if (forceRelogin) {
+            Log.d(LOG_TAG, "redoing login");
+            SisgradCrawler.SentinelaLoginObject a = this.login.loginToSentinela();
+            Log.d(LOG_TAG, "login successful");
+            return OK;
+        }
         if (this.alreadyCreatedLoginObject && ((currentUnix-this.lastLoginSuccess)>=LOGIN_TIMEOUT || this.lastLoginSuccess==0)) {//lastLoginSuccess==0 means it was just created, never assigned a value
             SisgradCrawler.SentinelaLoginObject loginObject = this.login.loginToSentinela();//logs in
             if (loginObject.loginError != null) {
