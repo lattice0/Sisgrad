@@ -102,7 +102,6 @@ public class MessagesFragment extends Fragment implements
     onItemSelected mCallback;
 
     public interface onItemSelected {//interface to be implemented by the main activity to receive the clicks
-
         void onMessageSelected(String id, String provisoryTitle);
     }
 
@@ -120,30 +119,6 @@ public class MessagesFragment extends Fragment implements
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        /*
-        //--------------------------------------------
-        //Cursor Tests
-        String selection = DataProviderContract.MESSAGES.MESSAGE+"=?";
-        String[] arguments = {"null"};//we're gonna get only the null messages, so we can load their content
-
-        String[] projection = {//columns to return from query
-                DataProviderContract.MESSAGES.MESSAGE_ID,
-                DataProviderContract.MESSAGES.MESSAGE,
-                DataProviderContract.MESSAGES.SENT_DATE_UNIX
-        };
-        Cursor c1 = getContext().getContentResolver().query(
-                DataProviderContract.MESSAGES_URI,
-                projection,
-                null,
-                null,
-                DataProviderContract.MESSAGES.SENT_DATE_UNIX+" DESC"
-        );//load messages
-        String id = "20435271";
-        Log.d(LOG_TAG, "does cursor contains message id "+id+" ? "+CursorUtils.Contains(c1,id,DataProviderContract.MESSAGES.MESSAGE_ID));
-        Log.d(LOG_TAG, "does cursor contains message id "+id+" ? "+CursorUtils.Contains(c1,id,DataProviderContract.MESSAGES.MESSAGE_ID));
-
-        //--------------------------------------------
-        */
 
         //DUMP STORAGE CURSOR-------------------------
         String selection2 = DataProviderContract.STORAGE.TYPE + "=?";
@@ -165,11 +140,16 @@ public class MessagesFragment extends Fragment implements
 
         Log.d(LOG_TAG, "STORAGE DUMP: "+ DatabaseUtils.dumpCursorToString(i));
         //--------------------------------------------
-        Log.d(LOG_TAG, "MESSAGES FRAGMENT CREATED");
-        app = ((Sisgrad) getContext().getApplicationContext());//Gets the global object that stores login information
-        //login = app.getLoginObject();//gets the login object from the global object
-        //loadTeacherImagesToAdapter();
-        //ImageManagement.DumpCursor(getContext());
+        Log.d(LOG_TAG, "MessagesFragment.java created");
+
+        /*
+         * Gets the global object that stores login information. This is very important and
+         * will be used throughout the entire app. It has methods to log in and store login
+         * information to be accessed by all activities. Look at Sisgrad.java for a complete
+         * explanation.
+         */
+        app = ((Sisgrad) getContext().getApplicationContext());
+
         getLoaderManager().initLoader(URL_LOADER, null, this);//calls the cursorLoader
         loginUpdaterTask.execute();//start login process (or resume it)
     }
@@ -243,7 +223,6 @@ public class MessagesFragment extends Fragment implements
                 }
             }
         });
-        Log.d(LOG_TAG, "setted adapter");
         return view;
     }
 
@@ -255,7 +234,6 @@ public class MessagesFragment extends Fragment implements
          */
         switch (loaderID) {
             case URL_LOADER:
-                Log.d(LOG_TAG, "URL_LOADER chosen");
                 // Returns a new CursorLoader
                 return new CursorLoader(
                         getContext(),   // Parent activity context
@@ -266,7 +244,7 @@ public class MessagesFragment extends Fragment implements
                         DataProviderContract.MESSAGES.SENT_DATE_UNIX + " DESC"             // Arrange by earliest
                 );
             default:
-                Log.d(LOG_TAG, "NULL chosen");
+                Log.d(LOG_TAG, "NULL loader ID chosen");
                 // An invalid id was passed in
                 return null;
         }
@@ -328,9 +306,6 @@ public class MessagesFragment extends Fragment implements
             }
         }
 
-        protected void onProgressUpdate(Integer progress) {
-            //setProgressPercent(progress[0]);
-        }
         //TODO: implement each error accordingly
         protected void onPostExecute(Integer loginResult) {
             if (loginResult.equals(Sisgrad.OK)) {
@@ -419,10 +394,6 @@ public class MessagesFragment extends Fragment implements
             return null;
         }
 
-        protected void onProgressUpdate(Integer progress) {
-            //setProgressPercent(progress[0]);
-        }
-
         protected void onPostExecute(Integer result) {
             progress.setVisibility(View.GONE);
             mSwipeRefreshLayout.setRefreshing(false);
@@ -506,9 +477,9 @@ public class MessagesFragment extends Fragment implements
             }
         }
     }
-
+    //simply get the message content given an Id and save it to the database
     //makes part of the AsyncTask above
-    private void getMessageAndSaveToDatabase(String messageId) {//simply get the message content given an Id and save it to the database
+    private void getMessageAndSaveToDatabase(String messageId) {
         try {
             Log.d(LOG_TAG, "loading message for " + messageId);
             SisgradCrawler.GetMessageResponse response = app.getLoginObject().getMessage(messageId, true);//true means: get the HTML of message, false is for text-only
@@ -531,7 +502,9 @@ public class MessagesFragment extends Fragment implements
 
     /*
     * This is the AsyncTask that download and save each avatar. It makes a list of message authors
-    * with no image, and try to load them.
+    * with no image, and try to load them. It controls which images were already loaded by maintaining
+    * a database of file names (which is the hex of the sha256 of the actual file name). The database
+    * also stores the time the image was loaded so it can reload it after some time.
     */
     private class LoadNewAvatar extends AsyncTask<Void, Integer, Boolean> {
         protected Boolean doInBackground(Void... s) {
@@ -661,10 +634,6 @@ public class MessagesFragment extends Fragment implements
             return false;
         }
 
-        protected void onProgressUpdate(Integer progress) {
-            //setProgressPercent(progress[0]);
-        }
-
         protected void onPostExecute(Boolean result) {
             // starts another loadEarliestUnloadedMessageFromMap when this one finished
             // they'll stop loading when all keys in setOfMessageIds are set to false
@@ -678,11 +647,7 @@ public class MessagesFragment extends Fragment implements
         }
     }
 
-    //-------------------------------------------
-    /*
-    * AsyncTask to finally load the messages from the server (not the content, just the metadata of each message).
-    * Each message must be loaded from the message code in this metadata (yeah, webcrawling sucks...)
-    */
+
     private static class CursorUtils {
         public static Boolean Contains(Cursor cursor, String value, String columnName) {
             //cursor.moveToFirst();
@@ -692,15 +657,6 @@ public class MessagesFragment extends Fragment implements
                 }
             }
             return false;
-        }
-        public static String FindString(Cursor cursor, String value, String columnToSearch, String columnToGetValue) {
-            //cursor.moveToFirst();
-            for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
-                if (cursor.getString(cursor.getColumnIndex(columnToSearch)).equals(value)) {
-                    return (cursor.getString(cursor.getColumnIndex(columnToGetValue)));
-                }
-            }
-            return null;
         }
     }
 }

@@ -215,28 +215,6 @@ public class LoginActivity extends AppCompatActivity {
                 Sisgrad app = ((Sisgrad)getApplicationContext());//gets global login object, see Sisgrad class for more information
                 app.createLoginObject(username, password);//registers username and password in the global object
                 return app.doOrResumeLogin(false);
-                /*
-                SisgradCrawler login = app.getLoginObject();//gets the login object
-
-                SisgradCrawler.SentinelaLoginObject loginObject = login.loginToSentinela();//logs in
-                //Now let's verify the possible errors:
-                if (loginObject.loginError!=null) {
-                    Log.d(LOG_TAG,"something wrong with login information:");
-                    if (loginObject.loginError.wrongEmail) {
-                        return WRONG_EMAIL;
-                    }
-                    if (loginObject.loginError.wrongPassword) {
-                        return WRONG_PASSWORD;
-                    }
-                } else if (loginObject.pageError!=null) {
-                    Log.d(LOG_TAG,"error with the page loading, code is: "
-                            +loginObject.pageError.errorCode+" message is "+
-                            loginObject.pageError.errorMessage
-                    );
-                } else {
-
-                }
-                */
             } catch (InterruptedException e) {
                 return Sisgrad.TIMEOUT;
             } catch (FileNotFoundException e){

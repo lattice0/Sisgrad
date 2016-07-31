@@ -1,5 +1,4 @@
 package com.lucaszanella.sisgrad;
-import com.lucaszanella.SisgradCrawler.SisgradCrawler;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -20,11 +19,14 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ListView;
 
+import com.lucaszanella.SisgradCrawler.SisgradCrawler;
+
 public class MainActivity extends AppCompatActivity implements MessagesFragment.onItemSelected {
     private SisgradCrawler login;
     private static final String LOG_TAG = "MainActivity";//tag for the Log.d function
 
     ActionBar bar;
+    //TODO: each fragment must hold its own title
     String[] pageTitles = {"Início", "Mensagens", "Notas", "Biblioteca"};
 
     /*

@@ -8,14 +8,16 @@ import com.lucaszanella.SisgradCrawler.SisgradCrawler;
 import java.util.Date;
 
 /**
- * Created by lucaszanella on 5/15/16.
  * Implementation of the following technique: http://stackoverflow.com/questions/1944656/android-global-variable
- * This is a global object intended to stay accessible by any activity.
+ * This is a global object intended to stay accessible by any activity. You must first create a login object
+ * to store username and password information. Then, you can call the login functions. Then, you can access this
+ * object from any activity and call its methods anytime because they are synchronized.
  */
 public class Sisgrad extends Application {
     private static final String LOG_TAG = "Sisgrad.java";//tag for the Log.d function
 
-    public SisgradCrawler login;
+    public SisgradCrawler login;//Our SisgradCrawler object to do the login
+
     boolean alreadyCreatedLoginObject = false;
     public long lastLoginSuccess = 0;
 
