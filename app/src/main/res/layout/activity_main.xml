@@ -29,13 +29,13 @@
                 android:layout_height="wrap_content"
                 app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
                 app:layout_scrollFlags="scroll|enterAlways|snap"
-                android:background="#6495ED"
+                android:background="@color/MainActivityToolbar"
                 />
             <android.support.design.widget.TabLayout
                 android:id="@+id/tabs"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="#6495ED"
+                android:background="@color/MainActivityTab"
                 />
         </android.support.design.widget.AppBarLayout>
 

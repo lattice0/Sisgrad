@@ -27,7 +27,7 @@ public class MainActivity extends AppCompatActivity implements MessagesFragment.
 
     ActionBar bar;
     //TODO: each fragment must hold its own title
-    String[] pageTitles = {"Início", "Mensagens", "Notas", "Biblioteca"};
+    String[] pageTitles = {"Início", "Mensagens", "Aulas", "Biblioteca"};
 
     /*
      * Method to handle when a message is selected from MessagesFragment's list of messages
@@ -45,12 +45,11 @@ public class MainActivity extends AppCompatActivity implements MessagesFragment.
         //MainActivity.this.finish();
     }
     public static class MainPageAdapter extends FragmentPagerAdapter {//Adapter for fragments
-        private SisgradCrawler login;
+        //private SisgradCrawler login;
         private static int NUM_ITEMS = 4;//Number of pages (tabs)
 
         public MainPageAdapter(FragmentManager fragmentManager) {
             super(fragmentManager);
-            this.login = login;
         }
 
         // Returns total number of pages
@@ -64,13 +63,13 @@ public class MainActivity extends AppCompatActivity implements MessagesFragment.
         public Fragment getItem(int position) {
             switch (position) {
                 case 0:
-                    return BlankFragment.newInstance("", "");
+                    return BlankFragment.newInstance("param1", "param2");
                 case 1:
-                    return MessagesFragment.newInstance(0, "");
+                    return MessagesFragment.newInstance();
                 case 2:
-                    return BlankFragment.newInstance("", "");
+                    return ClassesFragment.newInstance();
                 case 3:
-                    return BlankFragment.newInstance("", "");
+                    return BlankFragment.newInstance("param1", "param2");
                 default:
                     return null;
             }
@@ -113,7 +112,7 @@ public class MainActivity extends AppCompatActivity implements MessagesFragment.
         setSupportActionBar(toolbar);
         bar = getSupportActionBar();//will be used below in the code to set the title of the bar
 
-        //Drawer layour is the left panel that appears when you swipe to the right
+        //Drawer layout is the left panel that appears when you swipe to the right
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle mActionBarDrawerToggle = new ActionBarDrawerToggle(this,
                 mDrawerLayout, toolbar, R.string.open, R.string.close);
@@ -145,6 +144,7 @@ public class MainActivity extends AppCompatActivity implements MessagesFragment.
         tabLayout.getTabAt(2).setIcon(R.drawable.ic_school);
         tabLayout.getTabAt(3).setIcon(R.drawable.ic_chrome_reader_mode);
 
+        //TODO: remember last visited tab
         thePager.setCurrentItem(1);
         //tabLayout.getTabAt(1).setIcon(R.drawable.ic_school);
 

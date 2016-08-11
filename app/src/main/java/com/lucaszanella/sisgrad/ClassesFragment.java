@@ -27,12 +27,11 @@ public class ClassesFragment extends Fragment implements
         LoaderManager.LoaderCallbacks<Cursor> {
 
     private static final String LOG_TAG = "ClassesFragment";
-    private SisgradCrawler login;
-    private TextView text;
+    private Sisgrad app;
     private static final int URL_LOADER = 1;
     private boolean loginProcessTerminatedSucessful = false;
     private Cursor actualCursor = null;
-    private static final String MAIN = "ClassesFragment";//name for the Log.d function
+
     private ClassesAdapter mAdapter;
 
     private String[] mProjection = {
@@ -41,9 +40,6 @@ public class ClassesFragment extends Fragment implements
             DataProviderContract.CLASSES.CLASS,
             DataProviderContract.CLASSES.TEACHER,
     };
-    public void receiveLoginObject(SisgradCrawler login) {
-        this.login = login;
-    }
     @Override
     public Loader<Cursor> onCreateLoader(int loaderID, Bundle bundle) {
         /*
@@ -64,8 +60,6 @@ public class ClassesFragment extends Fragment implements
                 // An invalid id was passed in
                 return null;
         }
-
-
     }
 
     @Override
@@ -74,7 +68,6 @@ public class ClassesFragment extends Fragment implements
          *  Changes the adapter's Cursor to be the results of the load. This forces the View to
          *  redraw.
          */
-        Log.d(LOG_TAG, "cursor changed, redrawing");
         actualCursor = returnCursor;
         mAdapter.changeCursor(returnCursor);
     }
@@ -91,19 +84,25 @@ public class ClassesFragment extends Fragment implements
     }
     /*
      * AsyncTask that loads 'classes' (here 'classes' means classes from the university).
-     * TODO: make this asynctask prettier and implement (and catch) the right errors in the SisgradCrawler class
+     * TODO: make this asyncTask prettier and implement (and catch) the right errors in the SisgradCrawler class
      */
-    private class getClasses extends AsyncTask<SisgradCrawler, Integer, Map<String, List<Map<String, String>>>> {
-        protected Map<String, List<Map<String, String>>>  doInBackground(SisgradCrawler... login) {
-            Log.d("getting messages NOW", "");
-            Map<String, List<Map<String, String>>>  classes = null;
+    private class getClasses extends AsyncTask<Void, Integer, Integer> {
+        private static final int OK = 0;
+        private static final int TIMEOUT = 1;
+        private static final int EXCEPTION = 2;
+        private static final int PAGE_ERROR = 3;
+        protected Integer doInBackground(Void... nothing) {
+            Log.d(LOG_TAG, "getting classes");
+            SisgradCrawler.GetClassesResponse  classes = null;
             try {
-                classes = login[0].getClasses();
+                classes = app.getLoginObject().getClasses();
                 Log.d(LOG_TAG, "got classes: "+classes);
             } catch (Exception e) {
                 e.printStackTrace();
+                //TODO: display the exception
+                return EXCEPTION;
             }
-            return classes;
+            return OK;
         }
 
         protected void onProgressUpdate(Integer progress) {
@@ -116,23 +115,14 @@ public class ClassesFragment extends Fragment implements
         }
     }
 
-    protected void startFirstGetMessages() {
-        new getClasses().execute(login);
-    }
-
-    public static Fragment newInstance(int page, String title) {//Returns an instance of this fragment to be attached in the MainActivity
-        Fragment fragmentFirst = new MessagesFragment();
-        Bundle args = new Bundle();
-        args.putInt("0", page);
-        args.putString("Aulas", title);
-        fragmentFirst.setArguments(args);
-        return fragmentFirst;
+    public static Fragment newInstance() {//Returns an instance of this fragment to be attached in the MainActivity
+        return new ClassesFragment();
     }
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        getLoaderManager().initLoader(URL_LOADER, null, this);//starts the loader manager for this class
+        app = ((Sisgrad) getContext().getApplicationContext());
+        //getLoaderManager().initLoader(URL_LOADER, null, this);//starts the loader manager for this class
     }
     //TODO: create the layout inflater for this fragment.
     @Override

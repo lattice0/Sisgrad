@@ -24,16 +24,12 @@
                 android:layout_weight="2">
 
 
-                <com.pkmmte.view.CircularImageView
+                <de.hdodenhof.circleimageview.CircleImageView
                     android:layout_width="60dp"
                     android:layout_height="60dp"
                     android:id="@+id/person"
                     android:layout_gravity="center"
-                    android:src="@mipmap/genericavatar"
-                    app:border="false"
-                    app:border_color="#EEEEEE"
-                    app:border_width="4dp"
-                    app:shadow="true" />
+                    android:src="@mipmap/genericavatar" />
             </FrameLayout>
 
             <LinearLayout

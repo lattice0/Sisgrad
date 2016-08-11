@@ -80,17 +80,13 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="3">
 
-                                <com.pkmmte.view.CircularImageView
+                                <de.hdodenhof.circleimageview.CircleImageView
                                     android:layout_width="60dp"
                                     android:layout_height="60dp"
                                     android:id="@+id/authorImage"
                                     android:layout_gravity="center_horizontal|top"
                                     android:src="@mipmap/genericavatar"
-                                    android:paddingLeft="5dp"
-                                    app:border="false"
-                                    app:border_color="#EEEEEE"
-                                    app:border_width="4dp"
-                                    app:shadow="true" />
+                                    android:paddingLeft="5dp" />
                             </FrameLayout>
 
                             <LinearLayout

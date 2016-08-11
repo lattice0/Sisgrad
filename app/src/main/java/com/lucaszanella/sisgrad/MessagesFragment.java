@@ -1,11 +1,11 @@
 package com.lucaszanella.sisgrad;
 
-/*
+/**
 * Lucas Zanella
 *
 * Fragment that will display the last messages from the Sisgrad's system, and also load
 * the image of each author through Lattes system.
-* If you're new to development, this fragment uses the following concepts:
+* If you're new to Android development, this fragment uses the following concepts:
 * CursorLoader
 * ContentProviders
 * AsyncTask
@@ -86,15 +86,8 @@ public class MessagesFragment extends Fragment implements
     };
 
     //returns an instance of this fragment to be attached in MainActivity
-    public static MessagesFragment newInstance(int page, String title) {
-        MessagesFragment fragmentFirst = new MessagesFragment();
-
-        Bundle args = new Bundle();
-        args.putInt("0", page);//TODO: remove these args
-        args.putString("title", title);
-        fragmentFirst.setArguments(args);
-
-        return fragmentFirst;
+    public static MessagesFragment newInstance() {
+        return new MessagesFragment();
     }
 
     //UI creation process in order they're executed
@@ -120,7 +113,11 @@ public class MessagesFragment extends Fragment implements
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        //DUMP STORAGE CURSOR-------------------------
+        /**
+         * DUMP STORAGE CURSOR
+         * It's always good to dump the storage cursor in the start of the app for debug purposes,
+         * we never know if something gone terribly wrong and the app saved lots of unnecessary files.
+         */
         String selection2 = DataProviderContract.STORAGE.TYPE + "=?";
         String[] arguments2 = {"0"};//type 0 means: retrieve all author bitmaps
 
@@ -158,7 +155,7 @@ public class MessagesFragment extends Fragment implements
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        View view = inflater.inflate(R.layout.activity_messages_display, container, false);
+        View view = inflater.inflate(R.layout.fragment_messages, container, false);
 
         progress = (ProgressBar) view.findViewById(R.id.loading);
         progress.setVisibility(View.VISIBLE);
@@ -200,9 +197,9 @@ public class MessagesFragment extends Fragment implements
         ListView mListView = (ListView) view.findViewById(R.id.messagesList);
         mAdapter =
                 new MessagesAdapter(
-                        getContext(),   // Current context
-                        null,  //No cursor yet
-                        0 // No flags
+                        getContext(),// Current context
+                        null,//No cursor yet
+                        0// No flags
                 );//sets the adapter for the list of messages
 
         //mAdapter.authorImages = listOfTeacherAndBitmaps;
@@ -226,7 +223,10 @@ public class MessagesFragment extends Fragment implements
         return view;
     }
 
-    //Cursor Loader implementation as taught here by google https://developer.android.com/training/load-data-background/setup-loader.html
+    /**
+     * Cursor Loader implementation as taught here by google
+     * https://developer.android.com/training/load-data-background/setup-loader.html
+     */
     @Override
     public Loader<Cursor> onCreateLoader(int loaderID, Bundle bundle) {
         /*
@@ -274,7 +274,7 @@ public class MessagesFragment extends Fragment implements
         mAdapter.changeCursor(null);
     }
 
-    //AsyncTasks in order they're loaded
+    //------AsyncTasks in order they're loaded
 
     /*
     * AsyncTask to do login or resume the login's cookies
@@ -419,8 +419,7 @@ public class MessagesFragment extends Fragment implements
         }
     }
 
-    //-------------------------------------------
-     /*
+    /**
     * AsyncTask to finally load the messages from the server (not the content, just the metadata of each message).
     * It loads a cursor of messages with null content, and then load the content for the first message in the cursor.
     * This AsyncTask will recursively call itself until all the messages are loaded. If you can more than one  of this
@@ -477,8 +476,10 @@ public class MessagesFragment extends Fragment implements
             }
         }
     }
-    //simply get the message content given an Id and save it to the database
-    //makes part of the AsyncTask above
+    /**
+     * simply get the message content given an Id and save it to the database
+     * makes part of the AsyncTask above
+     */
     private void getMessageAndSaveToDatabase(String messageId) {
         try {
             Log.d(LOG_TAG, "loading message for " + messageId);
@@ -500,7 +501,7 @@ public class MessagesFragment extends Fragment implements
         }
     }
 
-    /*
+    /**
     * This is the AsyncTask that download and save each avatar. It makes a list of message authors
     * with no image, and try to load them. It controls which images were already loaded by maintaining
     * a database of file names (which is the hex of the sha256 of the actual file name). The database
@@ -534,9 +535,10 @@ public class MessagesFragment extends Fragment implements
                 }
             }
             if (authors!=null) {authors.close();}
-            //Log.d(LOG_TAG, "set of authors BEFORE processing: "+listOfAuthors);
-            //Now we're gonna see which authors didn't ave any information about its avatar image in the database
-            //and create the entries for it, so in the next recursive call of this AsyncTask, it gets loaded
+            /**
+             * Now we're gonna see which authors didn't ave any information about its avatar image in the database
+             * and create the entries for it, so in the next recursive call of this AsyncTask, it gets loaded
+             */
             for (String author : listOfAuthors.keySet()) {
                 String authorHash = Sha256Hex.hash(author.toLowerCase());//file name is the author name, but hashed
 
@@ -557,9 +559,7 @@ public class MessagesFragment extends Fragment implements
                         arguments2,
                         null//no order
                 );
-                //Log.d(LOG_TAG, "author: "+author+" dump: "+DatabaseUtils.dumpCursorToString(authorInformation));
-                //Now let's see if there's no records about this name on the database. If there's none,
-                //then we add it to the database
+                //Now let's see if there's no records about this name on the database. If there's none, then we add it to the database
                 if (authorInformation!=null && !(authorInformation.getCount()>0)) {
                     String unixTime = Long.toString(new Date().getTime() / 1000);
 
@@ -583,9 +583,11 @@ public class MessagesFragment extends Fragment implements
                         Long authorTime = authorInformation.getLong(authorInformation.getColumnIndex(DataProviderContract.STORAGE.DATE));
                         Integer numberOfTries = authorInformation.getInt(authorInformation.getColumnIndex(DataProviderContract.STORAGE.TRIES));//number of times we tried to get the file
 
-                        //if the file is x second old and we tried to load it no more than 5 times, try again, this
-                        //prevents the app from trying to load an non-existing image eternally
-                        //OR, if numberOfTries==0, it means we just added this file to the database, so let's give our first try
+                        /**
+                         * if the file is x second old and we tried to load it no more than 5 times, try again, this
+                         * prevents the app from trying to load an non-existing image eternally
+                         * OR, if numberOfTries==0, it means we just added this file to the database, so let's give our first try
+                         */
                         if ((currentTime - authorTime > IMAGES_CACHE_LIMIT && numberOfTries <= 5) || numberOfTries == 0) {
                             //Log.d(LOG_TAG, "author: "+author+" currentTime - authorTime = "+ (currentTime - authorTime)+" numberOfTries = "+numberOfTries);
                             //Log.d(LOG_TAG, "file " + authorHash + " is x seconds old, marking to reload...");
@@ -629,16 +631,19 @@ public class MessagesFragment extends Fragment implements
                     return true;
                 }
             }
-            //if none of the 'if's up there got triggered, it means no author needs to be loaded
-            //so lets just return false and the AsyncTask will stop calling itself recursively
+            /**
+             * if none of the 'if's up there got triggered, it means no author needs to be loaded
+             * so lets just return false and the AsyncTask will stop calling itself recursively
+             */
             return false;
         }
 
         protected void onPostExecute(Boolean result) {
-            // starts another loadEarliestUnloadedMessageFromMap when this one finished
-            // they'll stop loading when all keys in setOfMessageIds are set to false
-            //
-            //if the set still contains values with 0, load one more teacher image
+            /**
+             * starts another loadEarliestUnloadedMessageFromMap when this one finished
+             * they'll stop loading when all keys in setOfMessageIds are set to false
+             * if the set still contains values with 0, load one more teacher image
+             */
             if (result) {
                 new LoadNewAvatar().execute();
             } else {
@@ -650,7 +655,6 @@ public class MessagesFragment extends Fragment implements
 
     private static class CursorUtils {
         public static Boolean Contains(Cursor cursor, String value, String columnName) {
-            //cursor.moveToFirst();
             for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
                 if (cursor.getString(cursor.getColumnIndex(columnName)).equals(value)) {
                     return true;

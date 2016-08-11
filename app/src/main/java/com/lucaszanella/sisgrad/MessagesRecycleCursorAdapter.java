@@ -66,7 +66,7 @@ public class MessagesRecycleCursorAdapter extends RecyclerView.Adapter<MessagesR
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 
         View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.message_displayer, parent, false);
+                .inflate(R.layout.message_list_element, parent, false);
 
         return new ViewHolder(view);
     }

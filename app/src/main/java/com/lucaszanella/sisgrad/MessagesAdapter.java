@@ -16,6 +16,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+import de.hdodenhof.circleimageview.CircleImageView;
+
 /**
  * Created by lucaszanella on 5/2/16.
  */
@@ -37,7 +39,7 @@ public class MessagesAdapter extends CursorAdapter {
     // you don't bind any data to the view at this point.
     @Override
     public View newView(Context context, Cursor cursor, ViewGroup parent) {
-        return LayoutInflater.from(context).inflate(R.layout.message_displayer, parent, false);
+        return LayoutInflater.from(context).inflate(R.layout.message_list_element, parent, false);
     }
 
     // The bindView method is used to bind all data to a given view
@@ -49,7 +51,7 @@ public class MessagesAdapter extends CursorAdapter {
         TextView author = (TextView) view.findViewById(R.id.author);
         TextView message = (TextView) view.findViewById(R.id.message);
         TextView time = (TextView) view.findViewById(R.id.time);
-        ImageView image = (ImageView) view.findViewById(R.id.person);
+        CircleImageView image = (CircleImageView) view.findViewById(R.id.person);
         View progress = (ProgressBar) view.findViewById(R.id.progress);
         //progress.setVisibility(View.VISIBLE);
 
@@ -78,6 +80,7 @@ public class MessagesAdapter extends CursorAdapter {
         }
         */
         String authorName = cursor.getString(cursor.getColumnIndexOrThrow(DataProviderContract.MESSAGES.AUTHOR)).toLowerCase();
+        //image.setScaleType(CircleImageView.ScaleType.CENTER_INSIDE);
         //loads each bitmap ONCE to authorImages, if they're already loaded, just set them as the image source in 'image' views
         if (!authorImages.containsKey(authorName)) {
             try {

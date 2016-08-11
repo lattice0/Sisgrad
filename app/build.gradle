@@ -26,8 +26,9 @@ dependencies {
     compile 'com.android.support:appcompat-v7:24.1.1'
     compile 'com.android.support:support-v4:24.1.1'
     compile 'com.android.support:design:24.1.1'
-    compile 'com.pkmmte.view:circularimageview:1.1'
+    compile 'de.hdodenhof:circleimageview:2.1.0'
     compile 'org.json:json:20160212'
-    compile 'com.github.lucaszanella:UnespSisgradCrawler:-SNAPSHOT'
+    //compile 'com.github.lucaszanella:UnespSisgradCrawler:-SNAPSHOT'
+    compile 'com.github.lucaszanella:UnespSisgradCrawler:1ea5e03ac9'
 }
 

@@ -21,7 +21,7 @@ public class ClassesAdapter extends CursorAdapter {
     // you don't bind any data to the view at this point.
     @Override
     public View newView(Context context, Cursor cursor, ViewGroup parent) {
-        return LayoutInflater.from(context).inflate(R.layout.message_displayer, parent, false);
+        return LayoutInflater.from(context).inflate(R.layout.message_list_element, parent, false);
     }
 
     // The bindView method is used to bind all data to a given view

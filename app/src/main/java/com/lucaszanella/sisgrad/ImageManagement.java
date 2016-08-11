@@ -47,18 +47,6 @@ public class ImageManagement extends AppCompatActivity{
             return null;
         }
     }
-    public static void DumpCursor (Context context) {
-        Log.d(LOG_TAG, "dump cursor called");
-        String[] projection = {
-                DataProviderContract.STORAGE.NAME,
-                DataProviderContract.STORAGE.HASHNAME,
-                DataProviderContract.STORAGE.PATH,
-        };
-
-        Cursor cursorOfFiles = context.getContentResolver().query(DataProviderContract.STORAGE_URI, projection, null, null, null);
-        Log.d(LOG_TAG, DatabaseUtils.dumpCursorToString(cursorOfFiles));
-        cursorOfFiles.close();
-    }
 
     //Simple function to load an image from the storage, given a filename and a path
     public static Bitmap loadImageFromStorage(String name, Context context)
@@ -77,7 +65,6 @@ public class ImageManagement extends AppCompatActivity{
             cursorOfFiles.moveToFirst();
             String path = cursorOfFiles.getString(cursorOfFiles.getColumnIndex(DataProviderContract.STORAGE.PATH));
             cursorOfFiles.close();
-            ContextWrapper cw = new ContextWrapper(context.getApplicationContext());
             File filePath = new File(path, fileName);//create directory and file
             if (filePath.exists()) {
                 //imageView.setImageBitmap(decodeBitmapEfficiently(imgFile));
@@ -132,6 +119,7 @@ public class ImageManagement extends AppCompatActivity{
             o2.inSampleSize = scale;
             return BitmapFactory.decodeStream(new FileInputStream(f), null, o2);
         } catch (FileNotFoundException e) {
+            
         }
         return null;
     }
